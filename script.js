@@ -1832,14 +1832,21 @@ async function handleEditarPerfil(e) {
     btn.classList.add("loading");
     btn.disabled = true;
     
-    const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
-        method: 'PUT',
-        body: JSON.stringify({
-            nombre,
-            telefono,
-            contrasena: contrasena || undefined
-        })
-    });
+   // Preparar datos - solo incluir contraseña si se ingresó
+var datosActualizar = {
+    nombre: nombre,
+    telefono: telefono
+};
+
+// Solo agregar contraseña si se escribió algo
+if (contrasena && contrasena.trim() !== "") {
+    datosActualizar.contrasena = contrasena.trim();
+}
+
+const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
+    method: 'PUT',
+    body: JSON.stringify(datosActualizar)
+});
     
     btn.classList.remove("loading");
     btn.disabled = false;
