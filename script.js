@@ -965,6 +965,19 @@ function selectTipoServicio(tipo) {
             btns[i].classList.add("active");
         }
     }
+    
+    var seccionDir = document.getElementById("seccionDireccion");
+    if (tipo === "Domicilio") {
+        seccionDir.style.display = "block";
+        costoEnvio = 25;
+    } else {
+        seccionDir.style.display = "none";
+        costoEnvio = 0;
+        direccionSeleccionada = null;
+    }
+    
+    actualizarTotalesCheckout();
+}
 
 async function cargarDireccionesCheckout() {
     if (!sessionData) return;
