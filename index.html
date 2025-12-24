@@ -285,6 +285,10 @@
     <p style="margin-top: 10px; font-size: 13px; opacity: 0.8;">Delivery</p>
 </div>
         <p>Tu comida favorita en minutos</p>
+         <!-- BOTÓN TEMPORAL DE LIMPIEZA -->
+    <button onclick="if(confirm('¿Limpiar sesión?')){localStorage.clear();location.reload();}" style="margin: 10px auto; padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 11px;">
+        🔧 Limpiar Datos
+    </button>
         <div class="footer-social">
             <a href="#" class="social-btn">📘</a>
             <a href="#" class="social-btn">📸</a>
