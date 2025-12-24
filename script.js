@@ -1618,9 +1618,15 @@ function logout() {
         localStorage.removeItem("uniline_session");
         localStorage.removeItem("uniline_cliente");
         actualizarUIUsuario();
-        toggleUserMenu();
+        
+        // Cerrar menú
+        var menu = document.getElementById("userMenu");
+        if (menu) {
+            menu.classList.remove("show");
+        }
+        
         mostrarToast("Sesión cerrada");
-        navegar("menu");
+        mostrarSeccion("menu");
     }
 }
 
