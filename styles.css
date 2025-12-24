@@ -822,15 +822,78 @@ html, body {
 }
 .auth-header { text-align: center; padding: 24px 20px 16px; }
 .auth-logo {
-    width: 50px;
-    height: 50px;
-    background: var(--primary);
-    border-radius: 12px;
+    width: 120px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    margin: 0 auto 10px;
+    margin: 0 auto 20px;
+    animation: logoEntrance 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.auth-logo svg {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 4px 12px rgba(153, 64, 79, 0.2));
+}
+
+/* Animación de entrada del logo */
+@keyframes logoEntrance {
+    0% {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.1) rotate(10deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+/* Animación de la letra C */
+.auth-logo svg .cls-red {
+    animation: pulseBox 2s ease-in-out infinite;
+}
+
+@keyframes pulseBox {
+    0%, 100% {
+        fill: #99404F;
+    }
+    50% {
+        fill: #b54d5f;
+    }
+}
+
+/* Animación del texto OMODY */
+.auth-logo svg .cls-black {
+    animation: slideText 1s ease-out;
+}
+
+@keyframes slideText {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Animación hover */
+.auth-logo:hover svg {
+    animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
 }
 .auth-header h2 { font-size: 18px; font-weight: 600; color: var(--gray-900); }
 .auth-tabs { display: flex; border-bottom: 1px solid var(--gray-200); margin: 0 16px; }
@@ -2334,3 +2397,4 @@ html, body {
         gap: 16px;
     }
 }
+
