@@ -166,6 +166,32 @@ html, body {
     border-radius: 14px;
     display: none;
 }
+.btn-login-desktop {
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: none;
+}
+
+.btn-login-desktop:hover {
+    background: var(--primary-dark);
+}
+
+@media (min-width: 768px) {
+    .btn-login-desktop {
+        display: block;
+    }
+}
+
+
+
+
 .user-btn {
     width: 32px;
     height: 32px;
