@@ -124,11 +124,15 @@ html, body {
     max-width: 1200px;
     margin: 0 auto;
 }
-.header-left .logo {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--secondary);
-    white-space: nowrap;
+.header-logo {
+    display: flex;
+    align-items: center;
+}
+
+.header-logo svg {
+    width: 80px;
+    height: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 .header-center { flex: 1; min-width: 0; max-width: 200px; }
 .search-box {
@@ -811,7 +815,7 @@ html, body {
    MODAL AUTH
    ================================ */
 .modal-auth {
-    background: var(--white);
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
     border-radius: var(--radius) var(--radius) 0 0;
     width: 100%;
     max-width: 100%;
@@ -819,6 +823,23 @@ html, body {
     overflow-y: auto;
     position: relative;
     animation: slideUp 0.3s ease;
+}
+
+.modal-auth::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: linear-gradient(135deg, rgba(153, 64, 79, 0.05) 0%, rgba(46, 46, 46, 0.03) 100%);
+    border-radius: var(--radius) var(--radius) 0 0;
+    z-index: 0;
+}
+
+.auth-header {
+    position: relative;
+    z-index: 1;
 }
 .auth-header { text-align: center; padding: 24px 20px 16px; }
 .auth-logo {
@@ -2242,9 +2263,26 @@ html, body {
     color: white;
 }
 .footer-logo {
-    font-size: 20px;
-    font-weight: 700;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 8px;
+}
+
+.footer-logo svg {
+    width: 150px;
+    height: auto;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    animation: floatLogo 3s ease-in-out infinite;
+}
+
+@keyframes floatLogo {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
 }
 .footer-info > p {
     font-size: 13px;
