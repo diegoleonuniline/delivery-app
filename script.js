@@ -83,12 +83,20 @@ function actualizarUIUsuario() {
         document.getElementById("menuUserName").textContent = sessionData.nombre;
         document.getElementById("menuUserEmail").textContent = sessionData.correo;
         document.getElementById("footerCuentaLabel").textContent = "Cuenta";
+        
+        // Ocultar botón login desktop
+        var btnLogin = document.getElementById("btnLoginDesktop");
+        if (btnLogin) btnLogin.style.display = "none";
     } else {
         document.getElementById("userInitial").textContent = "?";
         document.getElementById("userPoints").textContent = "";
         document.getElementById("menuUserName").textContent = "Invitado";
         document.getElementById("menuUserEmail").textContent = "No has iniciado sesión";
         document.getElementById("footerCuentaLabel").textContent = "Entrar";
+        
+        // Mostrar botón login desktop
+        var btnLogin = document.getElementById("btnLoginDesktop");
+        if (btnLogin) btnLogin.style.display = "block";
     }
 }
 
@@ -1709,7 +1717,22 @@ function cerrarCuenta() {
 
 function editarPerfil() {
     cerrarCuenta();
-    mostrarToast("Próximamente...");
+    
+    // Abrir modal auth en modo edición
+    document.getElementById("modalAuth").classList.add("show");
+    document.body.style.overflow = "hidden";
+    
+    // Pre-llenar datos
+    document.getElementById("regNombre").value = sessionData.nombre;
+    document.getElementById("regTelefono").value = sessionData.telefono;
+    document.getElementById("regCorreo").value = sessionData.correo;
+    document.getElementById("regContrasena").value = "";
+    document.getElementById("regContrasena2").value = "";
+    
+    mostrarTabAuth("registro");
+    
+    // Cambiar texto del botón
+    document.getElementById("btnRegistro").querySelector(".btn-text").textContent = "Actualizar Datos";
 }
 
 async function verDirecciones() {
