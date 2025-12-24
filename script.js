@@ -961,21 +961,10 @@ function selectTipoServicio(tipo) {
     var btns = document.querySelectorAll(".tipo-btn");
     for (var i = 0; i < btns.length; i++) {
         btns[i].classList.remove("active");
+        if (btns[i].textContent.indexOf(tipo) >= 0) {
+            btns[i].classList.add("active");
+        }
     }
-    event.target.classList.add("active");
-    
-    var seccionDir = document.getElementById("seccionDireccion");
-    if (tipo === "Domicilio") {
-        seccionDir.style.display = "block";
-        costoEnvio = 25;
-    } else {
-        seccionDir.style.display = "none";
-        costoEnvio = 0;
-        direccionSeleccionada = null;
-    }
-    
-    actualizarTotalesCheckout();
-}
 
 async function cargarDireccionesCheckout() {
     if (!sessionData) return;
@@ -1655,11 +1644,17 @@ function navegar(seccion) {
     
     mostrarSeccion(seccion);
     
-    var items = document.querySelectorAll(".footer-item");
-    for (var i = 0; i < items.length; i++) {
-        items[i].classList.remove("active");
+    // Solo actualizar active si viene del footer
+    if (window.event && window.event.target) {
+        var items = document.querySelectorAll(".footer-item");
+        for (var i = 0; i < items.length; i++) {
+            items[i].classList.remove("active");
+        }
+        var footerItem = window.event.target.closest(".footer-item");
+        if (footerItem) {
+            footerItem.classList.add("active");
+        }
     }
-    event.target.closest(".footer-item").classList.add("active");
 }
 
 function mostrarSeccion(seccion) {
