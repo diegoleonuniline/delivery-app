@@ -32,6 +32,32 @@ var currentBanner = 0;
 var ultimosVistos = JSON.parse(localStorage.getItem("uniline_ultimos") || "[]");
 var MAX_ULTIMOS = 10;
 
+
+
+// LIMPIEZA TEMPORAL - Eliminar después de 1 día
+(function() {
+    var lastClean = localStorage.getItem("uniline_last_clean");
+    var now = Date.now();
+    
+    // Si nunca se ha limpiado o pasaron más de 24 horas
+    if (!lastClean || (now - parseInt(lastClean)) > 86400000) {
+        // Limpiar solo si hay datos corruptos
+        var savedCliente = localStorage.getItem("uniline_cliente");
+        if (savedCliente) {
+            try {
+                var cliente = JSON.parse(savedCliente);
+                if (!cliente.id || !cliente.nombre || cliente.correo === "@gmail.com") {
+                    localStorage.removeItem("uniline_session");
+                    localStorage.removeItem("uniline_cliente");
+                }
+            } catch (e) {
+                localStorage.removeItem("uniline_session");
+                localStorage.removeItem("uniline_cliente");
+            }
+        }
+        localStorage.setItem("uniline_last_clean", now.toString());
+    }
+})();
 // ================================
 // HELPER: FETCH API
 // ================================
@@ -58,11 +84,28 @@ window.addEventListener("load", function() {
     var savedSession = localStorage.getItem("uniline_session");
     var savedCliente = localStorage.getItem("uniline_cliente");
     
+    // Validar que los datos sean válidos
     if (savedSession && savedCliente) {
-        sessionData = JSON.parse(savedCliente);
-        actualizarUIUsuario();
+        try {
+            var cliente = JSON.parse(savedCliente);
+            // Verificar que tenga datos mínimos necesarios
+            if (cliente && cliente.id && cliente.nombre && cliente.correo) {
+                sessionData = cliente;
+            } else {
+                // Datos corruptos, limpiar
+                localStorage.removeItem("uniline_session");
+                localStorage.removeItem("uniline_cliente");
+                sessionData = null;
+            }
+        } catch (e) {
+            // Error al parsear, limpiar
+            localStorage.removeItem("uniline_session");
+            localStorage.removeItem("uniline_cliente");
+            sessionData = null;
+        }
     }
     
+    actualizarUIUsuario();
     loadCart();
     mostrarApp();
 });
@@ -1619,11 +1662,19 @@ async function handleRegistro(e) {
     btn.classList.remove("loading");
     btn.disabled = false;
     
-    if (data.success && data.cliente) {
-        sessionData = data.cliente;
-        localStorage.setItem("uniline_session", data.sessionId);
-        localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
-        
+  if (data.success && data.cliente) {
+    // Validar datos antes de guardar
+    if (!data.cliente.id || !data.cliente.nombre || !data.cliente.correo) {
+        var alert = document.getElementById("alertRegistro");
+        alert.className = "alert alert-error";
+        alert.textContent = "Error: Datos de registro inválidos";
+        alert.style.display = "block";
+        return false;
+    }
+    
+    sessionData = data.cliente;
+    localStorage.setItem("uniline_session", data.sessionId);
+    localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
         actualizarUIUsuario();
         cerrarModalAuth();
         mostrarToast("¡Cuenta creada! Bienvenido " + sessionData.nombre);
