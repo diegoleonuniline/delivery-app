@@ -145,9 +145,10 @@
                     <input type="text" id="searchInput" placeholder="Buscar..." oninput="buscarProductos()">
                 </div>
             </div>
-            <div class="header-right">
-                <div class="user-points" id="userPoints">⭐ 0</div>
-                <div class="user-btn" onclick="toggleUserMenu()">
+<div class="header-right">
+    <button class="btn-login-desktop" id="btnLoginDesktop" onclick="abrirModalAuth()" style="display:none;">Iniciar Sesión</button>
+    <div class="user-points" id="userPoints">⭐ 0</div>
+    <div class="user-btn" onclick="toggleUserMenu()">
                     <span id="userInitial">?</span>
                 </div>
                 <div class="cart-btn" onclick="toggleCart()">
