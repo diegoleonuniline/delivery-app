@@ -445,6 +445,73 @@
     </div>
 </div>
 
+    <!-- MODAL EDITAR PERFIL -->
+<div class="modal-overlay" id="modalEditarPerfil">
+    <div class="modal-auth">
+        <button class="modal-close" onclick="cerrarEditarPerfil()">✕</button>
+        
+        <div class="auth-header">
+            <div class="auth-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" width="120" height="36">
+                    <defs>
+                        <style>
+                            .cls-red { fill: #99404F; }
+                            .cls-black { fill: #2e2e2e; }
+                            .cls-white { fill: #ffffff; }
+                            .font-condensed { 
+                                font-family: 'Impact', 'Oswald', 'Arial Narrow', sans-serif; 
+                                font-weight: normal; 
+                                font-size: 140px;
+                                font-stretch: condensed;
+                                letter-spacing: 2px;
+                            }
+                        </style>
+                    </defs>
+                    <rect x="10" y="10" width="130" height="160" rx="10" ry="10" class="cls-red" />
+                    <text x="75" y="140" text-anchor="middle" class="cls-white font-condensed">C</text>
+                    <text x="160" y="140" class="cls-black font-condensed">OMODY</text>
+                </svg>
+            </div>
+            <h2>Editar Mi Perfil</h2>
+        </div>
+        
+        <div class="auth-body">
+            <div id="alertEditarPerfil" class="alert"></div>
+            <form onsubmit="return handleEditarPerfil(event)">
+                <div class="form-group">
+                    <label>👤 Nombre</label>
+                    <input type="text" id="editNombre" placeholder="Tu nombre completo" required>
+                </div>
+                <div class="form-group">
+                    <label>📱 Teléfono</label>
+                    <input type="tel" id="editTelefono" placeholder="10 dígitos" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label>📧 Correo</label>
+                    <input type="email" id="editCorreo" placeholder="tu@correo.com" readonly style="opacity: 0.6; cursor: not-allowed;">
+                    <small style="font-size: 10px; color: var(--gray-500); margin-top: 4px; display: block;">El correo no se puede cambiar</small>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Nueva Contraseña (opcional)</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="editContrasena" placeholder="Dejar vacío para no cambiar">
+                        <button type="button" class="toggle-password" onclick="togglePassword('editContrasena', 'eyeIconEdit')">
+                            <span id="eyeIconEdit">👁️</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Confirmar Contraseña</label>
+                    <input type="password" id="editContrasena2" placeholder="Confirmar nueva contraseña">
+                </div>
+                <button type="submit" class="btn-auth btn-registro" id="btnEditarPerfil">
+                    <span class="btn-text">Guardar Cambios</span>
+                    <span class="btn-loader"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- MODAL DIRECCIONES -->
 <div class="modal-overlay" id="modalDirecciones">
     <div class="modal-direcciones">
