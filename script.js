@@ -1810,9 +1810,9 @@ async function handleEditarPerfil(e) {
     
     document.getElementById("alertEditarPerfil").style.display = "none";
     
-    // Validar contraseñas solo si se ingresó algo
-    if (contrasena || contrasena2) {
-        if (contrasena !== contrasena2) {
+// Validar contraseñas solo si se ingresó algo
+if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
+    if (contrasena.trim() !== contrasena2.trim()) {
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = "Las contraseñas no coinciden";
