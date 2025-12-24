@@ -836,8 +836,8 @@ function updateCartUI() {
     var itemsContainer = document.getElementById("cartItems");
     var footer = document.getElementById("cartFooter");
     
-    if (cart.length === 0) {
-        itemsContainer.innerHTML = "<div class='cart-empty'><span>🛒</span><p>Tu carrito está vacío</p></div>";
+if (cart.length === 0) {
+    itemsContainer.innerHTML = "<div class='cart-empty'><span>🛒</span><p>Tu carrito está vacío</p><button class='btn-comenzar' onclick='toggleCart(); setTimeout(function(){mostrarSeccion(\"menu\")}, 300);'>Comenzar a pedir</button></div>";
         footer.style.display = "none";
         document.getElementById("carritoFlotante").style.display = "none";
         return;
