@@ -1780,23 +1780,86 @@ function cerrarCuenta() {
 function editarPerfil() {
     cerrarCuenta();
     
-    // Abrir modal auth en modo edición
-    document.getElementById("modalAuth").classList.add("show");
-    document.body.style.overflow = "hidden";
-    
     // Pre-llenar datos
-    document.getElementById("regNombre").value = sessionData.nombre;
-    document.getElementById("regTelefono").value = sessionData.telefono;
-    document.getElementById("regCorreo").value = sessionData.correo;
-    document.getElementById("regContrasena").value = "";
-    document.getElementById("regContrasena2").value = "";
+    document.getElementById("editNombre").value = sessionData.nombre;
+    document.getElementById("editTelefono").value = sessionData.telefono;
+    document.getElementById("editCorreo").value = sessionData.correo;
+    document.getElementById("editContrasena").value = "";
+    document.getElementById("editContrasena2").value = "";
     
-    mostrarTabAuth("registro");
+    // Limpiar alertas
+    document.getElementById("alertEditarPerfil").style.display = "none";
     
-    // Cambiar texto del botón
-    document.getElementById("btnRegistro").querySelector(".btn-text").textContent = "Actualizar Datos";
+    // Abrir modal
+    document.getElementById("modalEditarPerfil").classList.add("show");
+    document.body.style.overflow = "hidden";
 }
 
+function cerrarEditarPerfil() {
+    document.getElementById("modalEditarPerfil").classList.remove("show");
+    document.body.style.overflow = "";
+}
+
+async function handleEditarPerfil(e) {
+    e.preventDefault();
+    
+    var nombre = document.getElementById("editNombre").value.trim();
+    var telefono = document.getElementById("editTelefono").value.trim();
+    var contrasena = document.getElementById("editContrasena").value;
+    var contrasena2 = document.getElementById("editContrasena2").value;
+    
+    document.getElementById("alertEditarPerfil").style.display = "none";
+    
+    // Validar contraseñas solo si se ingresó algo
+    if (contrasena || contrasena2) {
+        if (contrasena !== contrasena2) {
+            var alert = document.getElementById("alertEditarPerfil");
+            alert.className = "alert alert-error";
+            alert.textContent = "Las contraseñas no coinciden";
+            alert.style.display = "block";
+            return false;
+        }
+        if (contrasena.length < 4) {
+            var alert = document.getElementById("alertEditarPerfil");
+            alert.className = "alert alert-error";
+            alert.textContent = "La contraseña debe tener al menos 4 caracteres";
+            alert.style.display = "block";
+            return false;
+        }
+    }
+    
+    var btn = document.getElementById("btnEditarPerfil");
+    btn.classList.add("loading");
+    btn.disabled = true;
+    
+    const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
+        method: 'PUT',
+        body: JSON.stringify({
+            nombre,
+            telefono,
+            contrasena: contrasena || undefined
+        })
+    });
+    
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    
+    if (data.success && data.cliente) {
+        sessionData = data.cliente;
+        localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
+        
+        actualizarUIUsuario();
+        cerrarEditarPerfil();
+        mostrarToast("✅ Perfil actualizado correctamente");
+    } else {
+        var alert = document.getElementById("alertEditarPerfil");
+        alert.className = "alert alert-error";
+        alert.textContent = data.mensaje || "Error al actualizar";
+        alert.style.display = "block";
+    }
+    
+    return false;
+}
 async function verDirecciones() {
     if (!sessionData) return;
     
