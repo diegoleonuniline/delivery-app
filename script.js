@@ -352,37 +352,48 @@ function renderDestacados() {
     container.innerHTML = html;
 }
 
-// ================================
-// BANNERS SECUNDARIO/TERCIARIO
-// ================================
 function renderBannerSecundario() {
+    var containerExtra = document.getElementById("bannersExtraContainer");
     var container = document.getElementById("bannerSecundario");
     var img = document.getElementById("bannerSecundarioImg");
     
     if (!menuData.bannersSecundario || menuData.bannersSecundario.length === 0) {
         container.style.display = "none";
-        return;
+    } else {
+        var banner = menuData.bannersSecundario[Math.floor(Math.random() * menuData.bannersSecundario.length)];
+        img.src = banner.url;
+        img.onerror = function() { container.style.display = "none"; checkBannersExtra(); };
+        container.style.display = "block";
+        containerExtra.style.display = "grid";
     }
-    
-    var banner = menuData.bannersSecundario[Math.floor(Math.random() * menuData.bannersSecundario.length)];
-    img.src = banner.url;
-    img.onerror = function() { container.style.display = "none"; };
-    container.style.display = "block";
 }
 
 function renderBannerTerciario() {
+    var containerExtra = document.getElementById("bannersExtraContainer");
     var container = document.getElementById("bannerTerciario");
     var img = document.getElementById("bannerTerciarioImg");
     
     if (!menuData.bannersTerciario || menuData.bannersTerciario.length === 0) {
         container.style.display = "none";
-        return;
+    } else {
+        var banner = menuData.bannersTerciario[Math.floor(Math.random() * menuData.bannersTerciario.length)];
+        img.src = banner.url;
+        img.onerror = function() { container.style.display = "none"; checkBannersExtra(); };
+        container.style.display = "block";
+        containerExtra.style.display = "grid";
     }
     
-    var banner = menuData.bannersTerciario[Math.floor(Math.random() * menuData.bannersTerciario.length)];
-    img.src = banner.url;
-    img.onerror = function() { container.style.display = "none"; };
-    container.style.display = "block";
+    checkBannersExtra();
+}
+
+function checkBannersExtra() {
+    var sec = document.getElementById("bannerSecundario");
+    var ter = document.getElementById("bannerTerciario");
+    var container = document.getElementById("bannersExtraContainer");
+    
+    if (sec.style.display === "none" && ter.style.display === "none") {
+        container.style.display = "none";
+    }
 }
 
 // ================================
