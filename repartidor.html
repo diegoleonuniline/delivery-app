@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚗 Repartidor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #1f2937;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        .status.inactive {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .status.active {
+            background: #d1fae5;
+            color: #059669;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 16px;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        .info {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .info-label {
+            color: #6b7280;
+        }
+        .info-value {
+            font-weight: 600;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Repartidor</h1>
+        <div class="status inactive" id="status">● Inactivo</div>
+        
+        <button class="btn btn-start" id="btnStart" onclick="iniciarTracking()">
+            📍 Iniciar Compartir Ubicación
+        </button>
+        
+        <button class="btn btn-stop" id="btnStop" onclick="detenerTracking()" style="display:none;">
+            ⏹️ Detener
+        </button>
+        
+        <div class="info">
+            <div class="info-item">
+                <span class="info-label">Latitud:</span>
+                <span class="info-value" id="lat">---</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Longitud:</span>
+                <span class="info-value" id="lng">---</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Actualizaciones:</span>
+                <span class="info-value" id="updates">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBy7ENCQhBC8RWOipWGcqd8YFPX_gN_I04",
+            authDomain: "tracking-delivery-69afb.firebaseapp.com",
+            databaseURL: "https://tracking-delivery-69afb-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "tracking-delivery-69afb",
+            storageBucket: "tracking-delivery-69afb.firebasestorage.app",
+            messagingSenderId: "819397431722",
+            appId: "1:819397431722:web:1b8869887a62764d5c9bd3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        let watchId = null;
+        let updateCount = 0;
+
+        window.iniciarTracking = function() {
+            if (!navigator.geolocation) {
+                alert('Tu navegador no soporta geolocalización');
+                return;
+            }
+
+            document.getElementById('btnStart').style.display = 'none';
+            document.getElementById('btnStop').style.display = 'block';
+            document.getElementById('status').className = 'status active';
+            document.getElementById('status').textContent = '● Compartiendo ubicación';
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    set(ref(db, 'repartidor/actual'), {
+                        lat: lat,
+                        lng: lng,
+                        timestamp: Date.now()
+                    });
+
+                    updateCount++;
+                    document.getElementById('lat').textContent = lat.toFixed(6);
+                    document.getElementById('lng').textContent = lng.toFixed(6);
+                    document.getElementById('updates').textContent = updateCount;
+                },
+                (error) => {
+                    alert('Error: ' + error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 10000
+                }
+            );
+        };
+
+        window.detenerTracking = function() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            document.getElementById('btnStart').style.display = 'block';
+            document.getElementById('btnStop').style.display = 'none';
+            document.getElementById('status').className = 'status inactive';
+            document.getElementById('status').textContent = '● Inactivo';
+        };
+    </script>
+</body>
+</html>
