@@ -1,7 +1,13 @@
 // ================================
 // CONFIGURACIÓN - URL DEL BACKEND
 // ================================
-const API_URL = 'https://delivery-uniline-back-d0e649feca1a.herokuapp.com';
+// Proteger API_URL contra modificación
+const API_URL = (function() {
+    const _url = 'https://delivery-uniline-back-d0e649feca1a.herokuapp.com';
+    return Object.freeze({
+        get: function() { return _url; }
+    });
+})();
 
 // ================================
 // VARIABLES GLOBALES
