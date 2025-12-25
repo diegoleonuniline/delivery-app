@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📍 Tracking en Tiempo Real</title>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
@@ -15,156 +14,264 @@
             box-sizing: border-box;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
+        
         body {
-            background: #f3f4f6;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
+            background: #000;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
         }
-        .header {
-            background: linear-gradient(135deg, #10b981, #059669);
-            padding: 30px;
-            color: white;
-        }
-        h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-        .subtitle {
-            opacity: 0.9;
-            font-size: 14px;
-        }
+        
         #map {
-            width: 100%;
-            height: 600px;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
-        .info-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #f9fafb;
-        }
-        .info-card {
+        
+        /* Card flotante arriba */
+        .top-card {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 320px;
             text-align: center;
         }
-        .info-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-        .info-label {
-            font-size: 12px;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        .info-value {
-            font-size: 20px;
-            font-weight: 700;
+        
+        .top-card h2 {
+            font-size: 18px;
             color: #1f2937;
+            margin-bottom: 8px;
         }
+        
         .status-badge {
-            display: inline-block;
-            padding: 6px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             background: #d1fae5;
             color: #059669;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
         }
         
-        /* Personalizar marcadores */
-        .marker-repartidor {
-            background: transparent;
-            border: none;
-            font-size: 40px;
-            animation: bounce 1s infinite;
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #059669;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
         }
-        .marker-cliente {
-            background: transparent;
-            border: none;
-            font-size: 35px;
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
         }
-        @keyframes bounce {
+        
+        /* Card flotante abajo */
+        .bottom-card {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 360px;
+        }
+        
+        .eta-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .eta-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            animation: bounce-smooth 2s infinite;
+        }
+        
+        @keyframes bounce-smooth {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        
+        .eta-info {
+            flex: 1;
+        }
+        
+        .eta-time {
+            font-size: 32px;
+            font-weight: 700;
+            color: #10b981;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        
+        .eta-label {
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .distance-info {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        
+        .distance-item {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .distance-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .distance-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        
+        /* Marcador personalizado repartidor */
+        .custom-marker-repartidor {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 28px;
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .custom-marker-repartidor::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #10b981;
+            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        
+        @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
         
-        /* Círculo pulsante estilo Uber */
-        .pulse-circle {
-            animation: pulse-ring 2s infinite;
+        @keyframes ping {
+            0% { transform: scale(1); opacity: 1; }
+            75%, 100% { transform: scale(2); opacity: 0; }
         }
-        @keyframes pulse-ring {
-            0% {
-                opacity: 0.6;
-                transform: scale(1);
+        
+        /* Marcador personalizado cliente */
+        .custom-marker-cliente {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 24px;
+            border: 3px solid #3b82f6;
+        }
+        
+        /* Círculo pulsante */
+        .pulse-circle-outer {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.2);
+            animation: pulse-outer 2s infinite;
+        }
+        
+        @keyframes pulse-outer {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+            100% { transform: scale(0.8); opacity: 0.8; }
+        }
+        
+        /* Modo responsivo */
+        @media (max-width: 768px) {
+            .top-card, .bottom-card {
+                min-width: calc(100vw - 40px);
             }
-            50% {
-                opacity: 0.3;
-                transform: scale(1.3);
-            }
-            100% {
-                opacity: 0.6;
-                transform: scale(1);
+            
+            .eta-time {
+                font-size: 28px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📍 Seguimiento en Tiempo Real</h1>
-            <p class="subtitle">Ubicación del repartidor actualizada automáticamente</p>
+    <!-- Card superior -->
+    <div class="top-card">
+        <h2>🚗 Repartidor en camino</h2>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span id="statusText">Actualizando...</span>
+        </div>
+    </div>
+    
+    <!-- Mapa -->
+    <div id="map"></div>
+    
+    <!-- Card inferior -->
+    <div class="bottom-card">
+        <div class="eta-section">
+            <div class="eta-icon">⏱️</div>
+            <div class="eta-info">
+                <div class="eta-time" id="etaTime">--</div>
+                <div class="eta-label">TIEMPO ESTIMADO</div>
+            </div>
         </div>
         
-        <div id="map"></div>
-        
-        <div class="info-bar">
-            <div class="info-card">
-                <div class="info-icon">📍</div>
-                <div class="info-label">Estado</div>
-                <div class="info-value">
-                    <span class="status-badge" id="statusBadge">Esperando...</span>
-                </div>
+        <div class="distance-info">
+            <div class="distance-item">
+                <div class="distance-value" id="distanceValue">--</div>
+                <div class="distance-label">Distancia</div>
             </div>
-            
-            <div class="info-card">
-                <div class="info-icon">🚗</div>
-                <div class="info-label">Latitud</div>
-                <div class="info-value" id="displayLat">---</div>
-            </div>
-            
-            <div class="info-card">
-                <div class="info-icon">🧭</div>
-                <div class="info-label">Longitud</div>
-                <div class="info-value" id="displayLng">---</div>
-            </div>
-            
-            <div class="info-card">
-                <div class="info-icon">⏱️</div>
-                <div class="info-label">Distancia y ETA</div>
-                <div class="info-value" id="displayTime" style="font-size:16px;">---</div>
+            <div class="distance-item">
+                <div class="distance-value" id="speedValue">--</div>
+                <div class="distance-label">Velocidad</div>
             </div>
         </div>
     </div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script type="module">
@@ -184,112 +291,123 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
-        // Ubicación de entrega (Autlán de Navarro)
+        // Punto de entrega (Autlán)
         const ubicacionCliente = [19.790858862412364, -104.36672462501878];
         
-        // Inicializar mapa centrado en el punto de entrega
-        const map = L.map('map').setView(ubicacionCliente, 13);
+        // Mapa con estilo oscuro moderno
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView(ubicacionCliente, 13);
         
-        // Agregar capa de mapa (OpenStreetMap - Gratis)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+        // Tile layer con estilo CartoDB Dark Matter (estilo Uber)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CartoDB',
             maxZoom: 19
         }).addTo(map);
         
         // Iconos personalizados
         const repartidorIcon = L.divIcon({
-            className: 'marker-repartidor',
-            html: '🚗',
-            iconSize: [40, 40],
-            iconAnchor: [20, 40]
+            className: '',
+            html: '<div class="custom-marker-repartidor">🚗</div>',
+            iconSize: [50, 50],
+            iconAnchor: [25, 25]
         });
         
         const clienteIcon = L.divIcon({
-            className: 'marker-cliente',
-            html: '🏠',
-            iconSize: [35, 35],
-            iconAnchor: [17, 35]
+            className: '',
+            html: `
+                <div style="position:relative; width:45px; height:45px;">
+                    <div class="pulse-circle-outer"></div>
+                    <div class="custom-marker-cliente">🏠</div>
+                </div>
+            `,
+            iconSize: [45, 45],
+            iconAnchor: [22, 22]
         });
         
-        // Marcadores
         let markerRepartidor = null;
-        let markerCliente = null;
         let polyline = null;
-        let pulseCircle = null;
+        let lastPosition = null;
+        let lastTime = null;
         
-        // Agregar marcador del cliente (punto de entrega)
-        markerCliente = L.marker(ubicacionCliente, { icon: clienteIcon })
+        // Marcador del cliente
+        L.marker(ubicacionCliente, { icon: clienteIcon })
             .addTo(map)
-            .bindPopup('📦 Punto de entrega - Autlán de Navarro');
+            .bindPopup('📦 Punto de entrega');
         
-        // Círculo pulsante (como Uber)
-        pulseCircle = L.circle(ubicacionCliente, {
-            color: '#3b82f6',
-            fillColor: '#3b82f6',
-            fillOpacity: 0.2,
-            radius: 100,
-            className: 'pulse-circle'
-        }).addTo(map);
-        
-        // Escuchar cambios en tiempo real
+        // Escuchar cambios
         const locationRef = ref(db, 'repartidor/actual');
         onValue(locationRef, (snapshot) => {
             const data = snapshot.val();
             
             if (data && data.lat && data.lng) {
                 const posRepartidor = [data.lat, data.lng];
+                const now = Date.now();
                 
-                // Actualizar o crear marcador del repartidor
+                // Calcular velocidad si hay posición previa
+                let velocidad = 0;
+                if (lastPosition && lastTime) {
+                    const distancia = map.distance(lastPosition, posRepartidor) / 1000; // km
+                    const tiempo = (now - lastTime) / 1000 / 3600; // horas
+                    velocidad = Math.round(distancia / tiempo);
+                }
+                
+                lastPosition = posRepartidor;
+                lastTime = now;
+                
+                // Actualizar marcador
                 if (markerRepartidor) {
                     markerRepartidor.setLatLng(posRepartidor);
                 } else {
                     markerRepartidor = L.marker(posRepartidor, { icon: repartidorIcon })
-                        .addTo(map)
-                        .bindPopup('🚗 Repartidor en camino');
+                        .addTo(map);
                 }
                 
-                // Dibujar línea entre repartidor y cliente
-                if (polyline) {
-                    map.removeLayer(polyline);
-                }
+                // Línea animada moderna
+                if (polyline) map.removeLayer(polyline);
+                
                 polyline = L.polyline([posRepartidor, ubicacionCliente], {
                     color: '#10b981',
-                    weight: 4,
-                    opacity: 0.7,
-                    dashArray: '10, 10'
+                    weight: 5,
+                    opacity: 0.8,
+                    smoothFactor: 1,
+                    dashArray: '10, 15',
+                    dashOffset: '0',
+                    className: 'animated-line'
                 }).addTo(map);
                 
-                // Ajustar vista para mostrar ambos puntos
+                // Animar línea
+                let offset = 0;
+                setInterval(() => {
+                    offset += 1;
+                    if (polyline) {
+                        polyline.setStyle({ dashOffset: offset });
+                    }
+                }, 50);
+                
+                // Ajustar vista
                 const bounds = L.latLngBounds([posRepartidor, ubicacionCliente]);
-                map.fitBounds(bounds, { padding: [80, 80] });
+                map.fitBounds(bounds, { 
+                    padding: [100, 100],
+                    maxZoom: 14
+                });
                 
-                // Actualizar info
-                document.getElementById('statusBadge').textContent = '● En camino';
-                document.getElementById('statusBadge').style.background = '#d1fae5';
-                document.getElementById('statusBadge').style.color = '#059669';
-                
-                document.getElementById('displayLat').textContent = data.lat.toFixed(6);
-                document.getElementById('displayLng').textContent = data.lng.toFixed(6);
-                
-                // Calcular distancia aproximada (línea recta)
-                const distanciaMetros = map.distance(posRepartidor, ubicacionCliente);
-                const distanciaKm = (distanciaMetros / 1000).toFixed(2);
-                
-                // Calcular ETA aproximado (asumiendo 30 km/h en ciudad)
-                const velocidadPromedio = 30; // km/h
+                // Calcular distancia y ETA
+                const distanciaKm = (map.distance(posRepartidor, ubicacionCliente) / 1000).toFixed(1);
+                const velocidadPromedio = velocidad > 5 ? velocidad : 30;
                 const etaMinutos = Math.ceil((distanciaKm / velocidadPromedio) * 60);
                 
-                // Mostrar distancia y ETA
-                document.getElementById('displayTime').innerHTML = `
-                    <div style="font-size:20px; color:#10b981; font-weight:700;">${distanciaKm} km</div>
-                    <div style="font-size:13px; color:#6b7280; margin-top:4px;">~${etaMinutos} min restantes</div>
-                `;
+                // Actualizar UI
+                document.getElementById('statusText').textContent = 'En camino a tu ubicación';
+                document.getElementById('etaTime').textContent = etaMinutos + ' min';
+                document.getElementById('distanceValue').textContent = distanciaKm + ' km';
+                document.getElementById('speedValue').textContent = velocidadPromedio + ' km/h';
                 
             } else {
-                document.getElementById('statusBadge').textContent = 'Esperando...';
-                document.getElementById('statusBadge').style.background = '#fee2e2';
-                document.getElementById('statusBadge').style.color = '#dc2626';
-                document.getElementById('displayTime').textContent = '---';
+                document.getElementById('statusText').textContent = 'Esperando ubicación...';
+                document.getElementById('etaTime').textContent = '--';
+                document.getElementById('distanceValue').textContent = '--';
+                document.getElementById('speedValue').textContent = '--';
             }
         });
     </script>
