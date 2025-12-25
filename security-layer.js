@@ -13,7 +13,6 @@
     Object.freeze(Object.prototype);
     Object.freeze(Array.prototype);
     Object.freeze(String.prototype);
-    Object.freeze(Function.prototype);
     
     // ================================
     // 2. SANITIZACIÓN XSS
@@ -35,20 +34,6 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#x27;')
             .replace(/\//g, '&#x2F;');
-    };
-    
-    // Crear elementos seguros
-    window._createElement = function(tag, props, text) {
-        const el = document.createElement(tag);
-        if (props) {
-            Object.keys(props).forEach(key => {
-                if (key === 'className') el.className = props[key];
-                else if (key === 'onclick') el.onclick = props[key];
-                else el.setAttribute(key, props[key]);
-            });
-        }
-        if (text) el.textContent = text;
-        return el;
     };
     
     // ================================
@@ -105,16 +90,12 @@
             return cleaned.length === 10;
         },
         text: function(text, maxLen = 500) {
-            if (!text) return true; // Vacío es válido
+            if (text === null || text === undefined) return true;
             return typeof text === 'string' && text.length <= maxLen;
         },
         number: function(num, min = 0, max = 999999) {
             const n = Number(num);
             return !isNaN(n) && n >= min && n <= max && isFinite(n);
-        },
-        alphanumeric: function(str) {
-            if (!str) return false;
-            return /^[a-zA-Z0-9\s]+$/.test(str);
         }
     };
     
@@ -153,7 +134,9 @@
     // 7. DESHABILITAR CONSOLE EN PRODUCCIÓN
     // ================================
     
-    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    if (location.hostname !== 'localhost' && 
+        location.hostname !== '127.0.0.1' &&
+        !location.hostname.includes('github.io')) {
         const noop = function() {};
         ['log', 'warn', 'error', 'info', 'debug', 'trace'].forEach(method => {
             window.console[method] = noop;
@@ -161,7 +144,7 @@
     }
     
     // ================================
-    // 8. PROTECCIÓN CONTRA MODIFICACIÓN
+    // 8. MARCAR COMO CARGADO
     // ================================
     
     Object.defineProperty(window, '_securityLayer', {
@@ -169,5 +152,7 @@
         writable: false,
         configurable: false
     });
+    
+    console.log('🛡️ Capa de seguridad activada');
     
 })();
