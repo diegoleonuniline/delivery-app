@@ -69,7 +69,7 @@ var MAX_ULTIMOS = 10;
 // ================================
 async function callAPI(endpoint, options = {}) {
     try {
-        const response = await fetch(API_URL + endpoint, {
+const response = await fetch(API_URL.get() + endpoint, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
