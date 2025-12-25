@@ -105,262 +105,24 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📍 Seguimiento en Tiempo Real</h1>
-            <p class="subtitle">Ubicación del repartidor actualizada automáticamente</p>
-        </div>
         
-        <div id="map"></div>
-        
-        <div class="info-bar">
-            <div class="info-card">
-                <div class="info-icon">📍</div>
-                <div class="info-label">Estado</div>
-                <div class="info-value">
-                    <span class="status-badge" id="statusBadge">Esperando...</span>
-                </div>
-            </div>
-            
-            <div class="info-card">
-                <div class="info-icon">🚗</div>
-                <div class="info-label">Latitud</div>
-                <div class="info-value" id="displayLat">---</div>
-            </div>
-            
-            <div class="info-card">
-                <div class="info-icon">🧭</div>
-                <div class="info-label">Longitud</div>
-                <div class="info-value" id="displayLng">---</div>
-            </div>
-            
-            <div class="info-card">
-                <div class="info-icon">⏱️</div>
-                <div class="info-label">Última actualización</div>
-                <div class="info-value" id="displayTime" style="font-size:16px;">---</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBy7ENCQhBC8RWOipWGcqd8YFPX_gN_I04",
-            authDomain: "tracking-delivery-69afb.firebaseapp.com",
-            databaseURL: "https://tracking-delivery-69afb-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "tracking-delivery-69afb",
-            storageBucket: "tracking-delivery-69afb.firebasestorage.app",
-            messagingSenderId: "819397431722",
-            appId: "1:819397431722:web:1b8869887a62764d5c9bd3"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        
-        // Inicializar mapa (centrado en Guadalajara por defecto)
-        const map = L.map('map').setView([20.6737, -103.3444], 13);
-        
-        // Agregar capa de mapa (OpenStreetMap - Gratis)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
-        
-        // Iconos personalizados
-        const repartidorIcon = L.divIcon({
-            className: 'marker-repartidor',
-            html: '🚗',
-            iconSize: [40, 40],
-            iconAnchor: [20, 40]
-        });
-        
-        const clienteIcon = L.divIcon({
-            className: 'marker-cliente',
-            html: '🏠',
-            iconSize: [35, 35],
-            iconAnchor: [17, 35]
-        });
-        
-        // Marcadores
-        let markerRepartidor = null;
-        let markerCliente = null;
-        let polyline = null;
-        
-        // Agregar marcador del cliente (tu ubicación fija o la que quieras)
-        // Puedes cambiar estas coordenadas
-        const ubicacionCliente = [20.6736, -103.3441];
-        markerCliente = L.marker(ubicacionCliente, { icon: clienteIcon })
-            .addTo(map)
-            .bindPopup('📦 Punto de entrega');
-        
-        // Escuchar cambios en tiempo real
-        const locationRef = ref(db, 'repartidor/actual');
-        onValue(locationRef, (snapshot) => {
-            const data = snapshot.val();
-            
-            if (data && data.lat && data.lng) {
-                const posRepartidor = [data.lat, data.lng];
-                
-                // Actualizar o crear marcador del repartidor
-                if (markerRepartidor) {
-                    markerRepartidor.setLatLng(posRepartidor);
-                } else {
-                    markerRepartidor = L.marker(posRepartidor, { icon: repartidorIcon })
-                        .addTo(map)
-                        .bindPopup('🚗 Repartidor en camino');
-                }
-                
-                // Dibujar línea entre repartidor y cliente
-                if (polyline) {
-                    map.removeLayer(polyline);
-                }
-                polyline = L.polyline([posRepartidor, ubicacionCliente], {
-                    color: '#10b981',
-                    weight: 3,
-                    opacity: 0.7,
-                    dashArray: '10, 10'
-                }).addTo(map);
-                
-                // Ajustar vista para mostrar ambos puntos
-                const bounds = L.latLngBounds([posRepartidor, ubicacionCliente]);
-                map.fitBounds(bounds, { padding: [50, 50] });
-                
-                // Actualizar info
-                document.getElementById('statusBadge').textContent = '● En camino';
-                document.getElementById('displayLat').textContent = data.lat.toFixed(6);
-                document.getElementById('displayLng').textContent = data.lng.toFixed(6);
-                
-                const ahora = new Date();
-                document.getElementById('displayTime').textContent = ahora.toLocaleTimeString('es-MX');
-                
-                // Calcular distancia aproximada (línea recta)
-                const distanciaMetros = map.distance(posRepartidor, ubicacionCliente);
-                const distanciaKm = (distanciaMetros / 1000).toFixed(2);
-                
-                console.log(`Distancia: ${distanciaKm} km`);
-                
-            } else {
-                document.getElementById('statusBadge').textContent = 'Esperando...';
-                document.getElementById('statusBadge').style.background = '#fee2e2';
-                document.getElementById('statusBadge').style.color = '#dc2626';
+        /* Círculo pulsante estilo Uber */
+        .pulse-circle {
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                opacity: 0.6;
+                transform: scale(1);
             }
-        });
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📍 Tracking en Tiempo Real</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        body {
-            background: #f3f4f6;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-        .header {
-            background: linear-gradient(135deg, #10b981, #059669);
-            padding: 30px;
-            color: white;
-        }
-        h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-        .subtitle {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        #map {
-            width: 100%;
-            height: 600px;
-        }
-        .info-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 30px;
-            background: #f9fafb;
-        }
-        .info-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            text-align: center;
-        }
-        .info-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-        .info-label {
-            font-size: 12px;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        .info-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1f2937;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            background: #d1fae5;
-            color: #059669;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        /* Personalizar marcadores */
-        .marker-repartidor {
-            background: transparent;
-            border: none;
-            font-size: 40px;
-            animation: bounce 1s infinite;
-        }
-        .marker-cliente {
-            background: transparent;
-            border: none;
-            font-size: 35px;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% {
+                opacity: 0.3;
+                transform: scale(1.3);
+            }
+            100% {
+                opacity: 0.6;
+                transform: scale(1);
+            }
         }
     </style>
 </head>
@@ -396,7 +158,7 @@
             
             <div class="info-card">
                 <div class="info-icon">⏱️</div>
-                <div class="info-label">Última actualización</div>
+                <div class="info-label">Distancia y ETA</div>
                 <div class="info-value" id="displayTime" style="font-size:16px;">---</div>
             </div>
         </div>
@@ -422,8 +184,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
-        // Inicializar mapa (centrado en Guadalajara por defecto)
-        const map = L.map('map').setView([20.6737, -103.3444], 13);
+        // Ubicación de entrega (Autlán de Navarro)
+        const ubicacionCliente = [19.790858862412364, -104.36672462501878];
+        
+        // Inicializar mapa centrado en el punto de entrega
+        const map = L.map('map').setView(ubicacionCliente, 13);
         
         // Agregar capa de mapa (OpenStreetMap - Gratis)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -450,13 +215,21 @@
         let markerRepartidor = null;
         let markerCliente = null;
         let polyline = null;
+        let pulseCircle = null;
         
-        // Agregar marcador del cliente (tu ubicación fija o la que quieras)
-        // Puedes cambiar estas coordenadas
-        const ubicacionCliente = [20.6736, -103.3441];
+        // Agregar marcador del cliente (punto de entrega)
         markerCliente = L.marker(ubicacionCliente, { icon: clienteIcon })
             .addTo(map)
-            .bindPopup('📦 Punto de entrega');
+            .bindPopup('📦 Punto de entrega - Autlán de Navarro');
+        
+        // Círculo pulsante (como Uber)
+        pulseCircle = L.circle(ubicacionCliente, {
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.2,
+            radius: 100,
+            className: 'pulse-circle'
+        }).addTo(map);
         
         // Escuchar cambios en tiempo real
         const locationRef = ref(db, 'repartidor/actual');
@@ -481,33 +254,42 @@
                 }
                 polyline = L.polyline([posRepartidor, ubicacionCliente], {
                     color: '#10b981',
-                    weight: 3,
+                    weight: 4,
                     opacity: 0.7,
                     dashArray: '10, 10'
                 }).addTo(map);
                 
                 // Ajustar vista para mostrar ambos puntos
                 const bounds = L.latLngBounds([posRepartidor, ubicacionCliente]);
-                map.fitBounds(bounds, { padding: [50, 50] });
+                map.fitBounds(bounds, { padding: [80, 80] });
                 
                 // Actualizar info
                 document.getElementById('statusBadge').textContent = '● En camino';
+                document.getElementById('statusBadge').style.background = '#d1fae5';
+                document.getElementById('statusBadge').style.color = '#059669';
+                
                 document.getElementById('displayLat').textContent = data.lat.toFixed(6);
                 document.getElementById('displayLng').textContent = data.lng.toFixed(6);
-                
-                const ahora = new Date();
-                document.getElementById('displayTime').textContent = ahora.toLocaleTimeString('es-MX');
                 
                 // Calcular distancia aproximada (línea recta)
                 const distanciaMetros = map.distance(posRepartidor, ubicacionCliente);
                 const distanciaKm = (distanciaMetros / 1000).toFixed(2);
                 
-                console.log(`Distancia: ${distanciaKm} km`);
+                // Calcular ETA aproximado (asumiendo 30 km/h en ciudad)
+                const velocidadPromedio = 30; // km/h
+                const etaMinutos = Math.ceil((distanciaKm / velocidadPromedio) * 60);
+                
+                // Mostrar distancia y ETA
+                document.getElementById('displayTime').innerHTML = `
+                    <div style="font-size:20px; color:#10b981; font-weight:700;">${distanciaKm} km</div>
+                    <div style="font-size:13px; color:#6b7280; margin-top:4px;">~${etaMinutos} min restantes</div>
+                `;
                 
             } else {
                 document.getElementById('statusBadge').textContent = 'Esperando...';
                 document.getElementById('statusBadge').style.background = '#fee2e2';
                 document.getElementById('statusBadge').style.color = '#dc2626';
+                document.getElementById('displayTime').textContent = '---';
             }
         });
     </script>
