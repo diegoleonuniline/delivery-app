@@ -280,19 +280,6 @@ html, body {
     width: 100%;
     overflow: hidden;
     border-radius: var(--radius);
-    max-height: 200px;
-}
-
-@media (min-width: 768px) {
-    .banners-container {
-        max-height: 280px;
-    }
-}
-
-@media (min-width: 1024px) {
-    .banners-container {
-        max-height: 320px;
-    }
 }
 .banners-slider {
     display: flex;
@@ -302,24 +289,10 @@ html, body {
 .banner-slide { min-width: 100%; width: 100%; }
 .banner-slide img {
     width: 100%;
-    height: 200px;
+    height: 140px;
     object-fit: cover;
     border-radius: var(--radius);
     display: block;
-}
-
-@media (min-width: 768px) {
-    .banner-slide img {
-        height: 280px;
-        object-fit: cover;
-    }
-}
-
-@media (min-width: 1024px) {
-    .banner-slide img {
-        height: 320px;
-        object-fit: cover;
-    }
 }
 .banners-dots {
     position: absolute;
