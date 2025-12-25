@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📍 Tracking en Tiempo Real</title>
+    <title>📍 Tracking Delivery</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -12,24 +12,20 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, sans-serif;
         }
         
         body {
             background: #f5f5f5;
-            overflow: hidden;
         }
         
         #map {
             width: 100vw;
             height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
         }
         
-        /* Card flotante superior */
-        .top-card {
+        /* Header con info */
+        .header {
             position: fixed;
             top: 20px;
             left: 50%;
@@ -37,234 +33,177 @@
             background: white;
             padding: 16px 24px;
             border-radius: 50px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             z-index: 1000;
             display: flex;
             align-items: center;
             gap: 12px;
         }
         
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            background: #10b981;
-            border-radius: 50%;
-            animation: pulse-dot 2s infinite;
-        }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.4); }
-        }
-        
-        .status-text {
+        .repartidores-count {
             font-size: 15px;
+            font-weight: 600;
+            color: #10b981;
+        }
+        
+        /* Lista de repartidores */
+        .repartidores-list {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .list-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .repartidor-item {
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .rep-icon {
+            font-size: 24px;
+        }
+        
+        .rep-info {
+            flex: 1;
+        }
+        
+        .rep-nombre {
+            font-size: 14px;
             font-weight: 600;
             color: #1f2937;
         }
         
-        /* Card flotante inferior */
-        .bottom-card {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 24px;
-            border-radius: 20px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            z-index: 1000;
-            width: calc(100vw - 40px);
-            max-width: 400px;
-        }
-        
-        .eta-section {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .eta-icon {
-            width: 56px;
-            height: 56px;
-            background: linear-gradient(135deg, #10b981, #059669);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            flex-shrink: 0;
-        }
-        
-        .eta-info {
-            flex: 1;
-        }
-        
-        .eta-time {
-            font-size: 32px;
-            font-weight: 700;
-            color: #10b981;
-            line-height: 1;
-            margin-bottom: 4px;
-        }
-        
-        .eta-label {
-            font-size: 12px;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 500;
-        }
-        
-        .distance-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        
-        .distance-item {
-            text-align: center;
-            padding: 16px;
-            background: #f9fafb;
-            border-radius: 12px;
-        }
-        
-        .distance-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
-        
-        .distance-label {
+        .rep-coords {
             font-size: 11px;
             color: #9ca3af;
+            margin-top: 2px;
+        }
+        
+        /* Punto de entrega */
+        .entrega-card {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            text-align: center;
+        }
+        
+        .entrega-card h3 {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
         }
         
-        /* Marcador repartidor */
-        .custom-marker-repartidor {
-            width: 46px;
-            height: 46px;
+        .entrega-direccion {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        /* Marcadores */
+        .marker-repartidor {
             background: white;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-            font-size: 26px;
-            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             border: 3px solid #10b981;
+            font-size: 22px;
         }
         
-        .custom-marker-repartidor::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid #10b981;
-            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-        }
-        
-        @keyframes ping {
-            0% { transform: scale(1); opacity: 1; }
-            75%, 100% { transform: scale(1.8); opacity: 0; }
-        }
-        
-        /* Marcador cliente */
-        .custom-marker-cliente {
-            width: 42px;
-            height: 42px;
+        .marker-entrega {
             background: white;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            font-size: 22px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             border: 3px solid #3b82f6;
+            font-size: 20px;
         }
         
-        .pulse-circle {
+        .pulse-ring {
             position: absolute;
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            background: rgba(59, 130, 246, 0.15);
-            animation: pulse-circle 2s infinite;
+            background: rgba(59, 130, 246, 0.2);
+            animation: pulse 2s infinite;
         }
         
-        @keyframes pulse-circle {
-            0% { transform: scale(0.9); opacity: 0.7; }
-            50% { transform: scale(1.1); opacity: 0.4; }
-            100% { transform: scale(0.9); opacity: 0.7; }
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+            100% { transform: scale(0.8); opacity: 0.8; }
         }
         
-        /* Responsive móvil */
-        @media (max-width: 640px) {
-            .top-card {
-                top: 16px;
-                padding: 14px 20px;
+        @media (max-width: 768px) {
+            .repartidores-list {
+                left: 10px;
+                bottom: 10px;
+                max-width: calc(100vw - 20px);
             }
             
-            .status-text {
-                font-size: 14px;
-            }
-            
-            .bottom-card {
-                bottom: 16px;
-                padding: 20px;
-                width: calc(100vw - 32px);
-            }
-            
-            .eta-time {
-                font-size: 28px;
-            }
-            
-            .eta-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 24px;
+            .entrega-card {
+                right: 10px;
+                top: 80px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Card superior -->
-    <div class="top-card">
-        <div class="status-dot"></div>
-        <span class="status-text" id="statusText">Actualizando ubicación...</span>
+    <!-- Header -->
+    <div class="header">
+        <span style="font-size: 20px;">🚗</span>
+        <span class="repartidores-count" id="repCount">0 repartidores activos</span>
+    </div>
+    
+    <!-- Punto de entrega -->
+    <div class="entrega-card">
+        <h3>📦 Punto de Entrega</h3>
+        <div class="entrega-direccion">Autlán de Navarro</div>
+    </div>
+    
+    <!-- Lista de repartidores -->
+    <div class="repartidores-list">
+        <div class="list-title">🚗 Repartidores Activos</div>
+        <div id="repList"></div>
     </div>
     
     <!-- Mapa -->
     <div id="map"></div>
-    
-    <!-- Card inferior -->
-    <div class="bottom-card">
-        <div class="eta-section">
-            <div class="eta-icon">⏱️</div>
-            <div class="eta-info">
-                <div class="eta-time" id="etaTime">--</div>
-                <div class="eta-label">TIEMPO ESTIMADO</div>
-            </div>
-        </div>
-        
-        <div class="distance-info">
-            <div class="distance-item">
-                <div class="distance-value" id="distanceValue">--</div>
-                <div class="distance-label">Distancia</div>
-            </div>
-            <div class="distance-item">
-                <div class="distance-value" id="speedValue">--</div>
-                <div class="distance-label">Velocidad</div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -286,105 +225,98 @@
         const db = getDatabase(app);
         
         // Punto de entrega
-        const ubicacionCliente = [19.790858862412364, -104.36672462501878];
+        const puntoEntrega = [19.790858862412364, -104.36672462501878];
         
-        // Mapa con límites de zoom
+        // Mapa
         const map = L.map('map', {
-            zoomControl: true,
             minZoom: 10,
             maxZoom: 18
-        }).setView(ubicacionCliente, 13);
+        }).setView(puntoEntrega, 13);
         
-        // Tile layer - Blanco y limpio
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap',
-            maxZoom: 18
+            attribution: '© OpenStreetMap'
         }).addTo(map);
         
-        // Mover controles de zoom
         map.zoomControl.setPosition('bottomright');
         
-        // Iconos
-        const repartidorIcon = L.divIcon({
+        // Marcador punto de entrega
+        const entregaIcon = L.divIcon({
             className: '',
-            html: '<div class="custom-marker-repartidor">🚗</div>',
-            iconSize: [46, 46],
-            iconAnchor: [23, 23]
+            html: '<div style="position:relative;"><div class="pulse-ring"></div><div class="marker-entrega">🏠</div></div>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
         
-        const clienteIcon = L.divIcon({
-            className: '',
-            html: `
-                <div style="position:relative; width:42px; height:42px;">
-                    <div class="pulse-circle"></div>
-                    <div class="custom-marker-cliente">🏠</div>
-                </div>
-            `,
-            iconSize: [42, 42],
-            iconAnchor: [21, 21]
-        });
-        
-        let markerRepartidor = null;
-        let lastPosition = null;
-        let lastTime = null;
-        
-        // Marcador cliente
-        L.marker(ubicacionCliente, { icon: clienteIcon })
+        L.marker(puntoEntrega, { icon: entregaIcon })
             .addTo(map)
             .bindPopup('📦 Punto de entrega');
         
-        // Tracking en tiempo real
-        const locationRef = ref(db, 'repartidor/actual');
-        onValue(locationRef, (snapshot) => {
+        // Marcadores de repartidores
+        let markers = {};
+        
+        // Escuchar TODOS los repartidores
+        const repartidoresRef = ref(db, 'repartidores');
+        onValue(repartidoresRef, (snapshot) => {
             const data = snapshot.val();
             
-            if (data && data.lat && data.lng) {
-                const posRepartidor = [data.lat, data.lng];
-                const now = Date.now();
-                
-                // Calcular velocidad
-                let velocidad = 0;
-                if (lastPosition && lastTime) {
-                    const distancia = map.distance(lastPosition, posRepartidor) / 1000;
-                    const tiempo = (now - lastTime) / 1000 / 3600;
-                    velocidad = Math.round(distancia / tiempo);
+            // Limpiar marcadores viejos
+            Object.keys(markers).forEach(id => {
+                if (!data || !data[id]) {
+                    map.removeLayer(markers[id]);
+                    delete markers[id];
                 }
+            });
+            
+            if (!data) {
+                document.getElementById('repCount').textContent = '0 repartidores activos';
+                document.getElementById('repList').innerHTML = '<div style="color:#9ca3af; font-size:13px;">No hay repartidores activos</div>';
+                return;
+            }
+            
+            const reps = Object.entries(data);
+            document.getElementById('repCount').textContent = reps.length + ' repartidor' + (reps.length !== 1 ? 'es' : '') + ' activo' + (reps.length !== 1 ? 's' : '');
+            
+            // Renderizar lista
+            let listHTML = '';
+            reps.forEach(([id, rep]) => {
+                listHTML += `
+                    <div class="repartidor-item">
+                        <div class="rep-icon">🚗</div>
+                        <div class="rep-info">
+                            <div class="rep-nombre">${rep.nombre}</div>
+                            <div class="rep-coords">${rep.lat.toFixed(4)}, ${rep.lng.toFixed(4)}</div>
+                        </div>
+                    </div>
+                `;
                 
-                lastPosition = posRepartidor;
-                lastTime = now;
+                const pos = [rep.lat, rep.lng];
                 
-                // Actualizar marcador
-                if (markerRepartidor) {
-                    markerRepartidor.setLatLng(posRepartidor);
+                // Crear o actualizar marcador
+                if (markers[id]) {
+                    markers[id].setLatLng(pos);
                 } else {
-                    markerRepartidor = L.marker(posRepartidor, { icon: repartidorIcon })
+                    const icon = L.divIcon({
+                        className: '',
+                        html: '<div class="marker-repartidor">🚗</div>',
+                        iconSize: [44, 44],
+                        iconAnchor: [22, 22]
+                    });
+                    
+                    markers[id] = L.marker(pos, { icon: icon })
                         .addTo(map)
-                        .bindPopup('🚗 Repartidor');
+                        .bindPopup('🚗 ' + rep.nombre);
                 }
-                
-                // Ajustar vista (sin desbordarse)
-                const bounds = L.latLngBounds([posRepartidor, ubicacionCliente]);
-                map.fitBounds(bounds, { 
-                    padding: [120, 120],
-                    maxZoom: 15
+            });
+            
+            document.getElementById('repList').innerHTML = listHTML;
+            
+            // Ajustar vista para mostrar todos
+            if (reps.length > 0) {
+                const bounds = L.latLngBounds([puntoEntrega]);
+                reps.forEach(([id, rep]) => {
+                    bounds.extend([rep.lat, rep.lng]);
                 });
-                
-                // Calcular distancia y ETA
-                const distanciaKm = (map.distance(posRepartidor, ubicacionCliente) / 1000).toFixed(1);
-                const velocidadPromedio = velocidad > 5 ? velocidad : 30;
-                const etaMinutos = Math.ceil((distanciaKm / velocidadPromedio) * 60);
-                
-                // Actualizar UI
-                document.getElementById('statusText').textContent = '🚗 Repartidor en camino';
-                document.getElementById('etaTime').textContent = etaMinutos + ' min';
-                document.getElementById('distanceValue').textContent = distanciaKm + ' km';
-                document.getElementById('speedValue').textContent = velocidadPromedio + ' km/h';
-                
-            } else {
-                document.getElementById('statusText').textContent = 'Esperando ubicación...';
-                document.getElementById('etaTime').textContent = '--';
-                document.getElementById('distanceValue').textContent = '--';
-                document.getElementById('speedValue').textContent = '--';
+                map.fitBounds(bounds, { padding: [80, 80], maxZoom: 15 });
             }
         });
     </script>
