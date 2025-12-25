@@ -33,13 +33,25 @@
             margin-bottom: 10px;
             color: #1f2937;
         }
+        .nombre-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+        .nombre-input:focus {
+            border-color: #10b981;
+        }
         .status {
             display: inline-block;
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: 600;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .status.inactive {
             background: #fee2e2;
@@ -62,16 +74,11 @@
             font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
         .btn-start {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white;
-        }
-        .btn-start:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
         }
         .btn-stop {
             background: linear-gradient(135deg, #ef4444, #dc2626);
@@ -101,6 +108,14 @@
 <body>
     <div class="container">
         <h1>🚗 Repartidor</h1>
+        
+        <input 
+            type="text" 
+            id="nombreRepartidor" 
+            class="nombre-input" 
+            placeholder="Tu nombre (ej: Juan)"
+        />
+        
         <div class="status inactive" id="status">● Inactivo</div>
         
         <button class="btn btn-start" id="btnStart" onclick="iniciarTracking()">
@@ -108,10 +123,14 @@
         </button>
         
         <button class="btn btn-stop" id="btnStop" onclick="detenerTracking()" style="display:none;">
-            ⏹️ Detener
+            ⏹️ Detener y Borrar mi Ubicación
         </button>
         
         <div class="info">
+            <div class="info-item">
+                <span class="info-label">Nombre:</span>
+                <span class="info-value" id="displayNombre">---</span>
+            </div>
             <div class="info-item">
                 <span class="info-label">Latitud:</span>
                 <span class="info-value" id="lat">---</span>
@@ -129,7 +148,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyBy7ENCQhBC8RWOipWGcqd8YFPX_gN_I04",
@@ -146,13 +165,23 @@
         
         let watchId = null;
         let updateCount = 0;
+        let miId = localStorage.getItem('repartidor_id') || 'REP_' + Date.now();
+        localStorage.setItem('repartidor_id', miId);
+
+        const nombreGuardado = localStorage.getItem('repartidor_nombre') || '';
+        document.getElementById('nombreRepartidor').value = nombreGuardado;
 
         window.iniciarTracking = function() {
-            if (!navigator.geolocation) {
-                alert('Tu navegador no soporta geolocalización');
+            const nombre = document.getElementById('nombreRepartidor').value.trim();
+            
+            if (!nombre) {
+                alert('Escribe tu nombre primero');
                 return;
             }
 
+            localStorage.setItem('repartidor_nombre', nombre);
+            document.getElementById('displayNombre').textContent = nombre;
+            document.getElementById('nombreRepartidor').disabled = true;
             document.getElementById('btnStart').style.display = 'none';
             document.getElementById('btnStop').style.display = 'block';
             document.getElementById('status').className = 'status active';
@@ -163,7 +192,9 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     
-                    set(ref(db, 'repartidor/actual'), {
+                    // Guardar en Firebase con ID único
+                    set(ref(db, 'repartidores/' + miId), {
+                        nombre: nombre,
                         lat: lat,
                         lng: lng,
                         timestamp: Date.now()
@@ -190,12 +221,20 @@
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
+
+            // BORRAR de Firebase
+            remove(ref(db, 'repartidores/' + miId));
+
+            document.getElementById('nombreRepartidor').disabled = false;
             document.getElementById('btnStart').style.display = 'block';
             document.getElementById('btnStop').style.display = 'none';
             document.getElementById('status').className = 'status inactive';
             document.getElementById('status').textContent = '● Inactivo';
+            document.getElementById('lat').textContent = '---';
+            document.getElementById('lng').textContent = '---';
+            updateCount = 0;
+            document.getElementById('updates').textContent = '0';
         };
     </script>
 </body>
 </html>
-Agregar app repartidor
