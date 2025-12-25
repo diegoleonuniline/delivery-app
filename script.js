@@ -134,6 +134,22 @@ function actualizarUIUsuario() {
             nombre: sessionData.nombre,
             correo: sessionData.correo
         });
+        
+        // Ocultar botón login desktop
+        var btnLogin = document.getElementById("btnLoginDesktop");
+        if (btnLogin) btnLogin.style.display = "none";
+    } else {
+        document.getElementById("userInitial").textContent = "?";
+        document.getElementById("userPoints").textContent = "";
+        document.getElementById("menuUserName").textContent = "Invitado";
+        document.getElementById("menuUserEmail").textContent = "No has iniciado sesión";
+        document.getElementById("footerCuentaLabel").textContent = "Entrar";
+        
+        // Mostrar botón login desktop
+        var btnLogin = document.getElementById("btnLoginDesktop");
+        if (btnLogin) btnLogin.style.display = "block";
+    }
+}
 
 // ================================
 // CARGAR MENÚ
