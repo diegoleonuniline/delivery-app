@@ -2207,17 +2207,12 @@ html, body {
    BANNERS SECUNDARIO/TERCIARIO
    ================================ */
 /* Container para banners lado a lado en desktop */
+/* Banners apilados verticalmente */
 .banners-extra-container {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
     margin-bottom: 16px;
-}
-
-@media (min-width: 768px) {
-    .banners-extra-container {
-        grid-template-columns: 1fr 1fr;
-    }
 }
 
 .banner-secundario,
