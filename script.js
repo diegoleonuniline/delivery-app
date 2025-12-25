@@ -1,84 +1,107 @@
 // ================================
-// CONFIGURACIÓN - URL DEL BACKEND
+// DELIVERY APP - VERSIÓN FORTIFICADA
 // ================================
-// Proteger API_URL contra modificación
-const API_URL = (function() {
-    const _url = 'https://delivery-uniline-back-d0e649feca1a.herokuapp.com';
-    return Object.freeze({
-        get: function() { return _url; }
-    });
-})();
 
-// ================================
-// VARIABLES GLOBALES
-// ================================
-var sessionData = null;
-var menuData = { categorias: [], productos: [], extras: [], productoExtras: [], banners: [], promociones: [] };
-var filteredProducts = [];
-var cart = [];
-var currentProduct = null;
-var modalQuantity = 1;
-var selectedExtras = [];
-var tipoServicio = "Domicilio";
-var costoEnvio = 25;
-var direccionSeleccionada = null;
-var coordenadasEntrega = "";
-var direccionesCliente = [];
-var pendingAction = null;
-var cuponAplicado = null;
-var cuponAutomaticoData = null;
-var promocionesData = [];
-var currentPromo = null;
-var promoCantidad = 1;
-var pedidosInterval = null;
-var pedidosCache = {};
-var currentView = localStorage.getItem("viewPreference") || "grid";
-var bannerInterval = null;
-var currentBanner = 0;
-var ultimosVistos = JSON.parse(localStorage.getItem("uniline_ultimos") || "[]");
-var MAX_ULTIMOS = 10;
-
-
-
-// LIMPIEZA TEMPORAL - Eliminar después de 1 día
 (function() {
-    var lastClean = localStorage.getItem("uniline_last_clean");
-    var now = Date.now();
-    
-    // Si nunca se ha limpiado o pasaron más de 24 horas
-    if (!lastClean || (now - parseInt(lastClean)) > 86400000) {
-        // Limpiar solo si hay datos corruptos
-        var savedCliente = localStorage.getItem("uniline_cliente");
-        if (savedCliente) {
-            try {
-                var cliente = JSON.parse(savedCliente);
-                if (!cliente.id || !cliente.nombre || cliente.correo === "@gmail.com") {
-                    localStorage.removeItem("uniline_session");
-                    localStorage.removeItem("uniline_cliente");
-                }
-            } catch (e) {
-                localStorage.removeItem("uniline_session");
-                localStorage.removeItem("uniline_cliente");
-            }
-        }
-        localStorage.setItem("uniline_last_clean", now.toString());
-    }
-})();
+'use strict';
+
+// Verificar que la capa de seguridad esté cargada
+if (!window._securityLayer) {
+    alert('ERROR: Capa de seguridad no cargada. Recarga la página.');
+    throw new Error('Security layer required');
+}
+
 // ================================
-// HELPER: FETCH API
+// API URL PROTEGIDA
+// ================================
+const _API_URL = 'https://delivery-uniline-back-d0e649feca1a.herokuapp.com';
+
+// ================================
+// VARIABLES INTERNAS PROTEGIDAS
+// ================================
+let _sessionData = null;
+let _menuData = { categorias: [], productos: [], extras: [], productoExtras: [], banners: [], promociones: [] };
+let _filteredProducts = [];
+let _cart = [];
+let _currentProduct = null;
+let _modalQuantity = 1;
+let _selectedExtras = [];
+let _tipoServicio = "Domicilio";
+let _costoEnvio = 25;
+let _direccionSeleccionada = null;
+let _coordenadasEntrega = "";
+let _direccionesCliente = [];
+let _pendingAction = null;
+let _cuponAplicado = null;
+let _cuponAutomaticoData = null;
+let _promocionesData = [];
+let _currentPromo = null;
+let _promoCantidad = 1;
+let _pedidosInterval = null;
+let _pedidosCache = {};
+let _currentView = localStorage.getItem("viewPreference") || "grid";
+let _bannerInterval = null;
+let _currentBanner = 0;
+let _ultimosVistos = JSON.parse(localStorage.getItem("uniline_ultimos") || "[]");
+const _MAX_ULTIMOS = 10;
+
+// ================================
+// EXPONER SOLO GETTERS PROTEGIDOS
+// ================================
+Object.defineProperty(window, 'sessionData', {
+    get: function() {
+        return _sessionData ? Object.assign({}, _sessionData) : null;
+    },
+    set: function(value) {
+        if (!window._securityLayer) return false;
+        if (value && value.id && value.nombre && value.correo) {
+            _sessionData = Object.freeze(Object.assign({}, value));
+            return true;
+        }
+        return false;
+    },
+    configurable: false,
+    enumerable: true
+});
+
+Object.defineProperty(window, 'cart', {
+    get: function() {
+        return _cart.slice();
+    },
+    set: function() {
+        return false;
+    },
+    configurable: false
+});
+
+// ================================
+// HELPER: FETCH API SEGURO
 // ================================
 async function callAPI(endpoint, options = {}) {
+    if (!window._rateLimit) {
+        return { error: 'Security layer not loaded' };
+    }
+    
+    if (!window._rateLimit('api_call', 30, 60000)) {
+        return { error: 'Demasiadas peticiones, espera un momento' };
+    }
+    
     try {
-const response = await fetch(API_URL.get() + endpoint, {
+        const response = await fetch(_API_URL + endpoint, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
                 ...options.headers
             }
         });
+        
+        if (!response.ok) {
+            throw new Error('Network error');
+        }
+        
         return await response.json();
     } catch (error) {
-        console.error('Error API:', error);
         return { error: error.message };
     }
 }
@@ -87,27 +110,12 @@ const response = await fetch(API_URL.get() + endpoint, {
 // INICIALIZACIÓN
 // ================================
 window.addEventListener("load", function() {
-    var savedSession = localStorage.getItem("uniline_session");
-    var savedCliente = localStorage.getItem("uniline_cliente");
+    var savedSession = window._secureStorage.get("uniline_session");
+    var savedCliente = window._secureStorage.get("uniline_cliente");
     
-    // Validar que los datos sean válidos
     if (savedSession && savedCliente) {
-        try {
-            var cliente = JSON.parse(savedCliente);
-            // Verificar que tenga datos mínimos necesarios
-            if (cliente && cliente.id && cliente.nombre && cliente.correo) {
-                sessionData = cliente;
-            } else {
-                // Datos corruptos, limpiar
-                localStorage.removeItem("uniline_session");
-                localStorage.removeItem("uniline_cliente");
-                sessionData = null;
-            }
-        } catch (e) {
-            // Error al parsear, limpiar
-            localStorage.removeItem("uniline_session");
-            localStorage.removeItem("uniline_cliente");
-            sessionData = null;
+        if (savedCliente.id && savedCliente.nombre && savedCliente.correo) {
+            _sessionData = Object.freeze(savedCliente);
         }
     }
     
@@ -126,22 +134,13 @@ function mostrarApp() {
 }
 
 function actualizarUIUsuario() {
-    console.log(">>> actualizarUIUsuario llamada, sessionData:", sessionData);
-    
-    if (sessionData) {
-        document.getElementById("userInitial").textContent = sessionData.nombre.charAt(0).toUpperCase();
-        document.getElementById("userPoints").textContent = "⭐ " + (sessionData.puntos || 0);
-        document.getElementById("menuUserName").textContent = sessionData.nombre;
-        document.getElementById("menuUserEmail").textContent = sessionData.correo;
+    if (_sessionData) {
+        document.getElementById("userInitial").textContent = window._escapeHTML(_sessionData.nombre.charAt(0).toUpperCase());
+        document.getElementById("userPoints").textContent = "⭐ " + (_sessionData.puntos || 0);
+        document.getElementById("menuUserName").textContent = window._escapeHTML(_sessionData.nombre);
+        document.getElementById("menuUserEmail").textContent = window._escapeHTML(_sessionData.correo);
         document.getElementById("footerCuentaLabel").textContent = "Cuenta";
         
-        console.log(">>> UI actualizada con:", {
-            inicial: sessionData.nombre.charAt(0).toUpperCase(),
-            nombre: sessionData.nombre,
-            correo: sessionData.correo
-        });
-        
-        // Ocultar botón login desktop
         var btnLogin = document.getElementById("btnLoginDesktop");
         if (btnLogin) btnLogin.style.display = "none";
     } else {
@@ -151,7 +150,6 @@ function actualizarUIUsuario() {
         document.getElementById("menuUserEmail").textContent = "No has iniciado sesión";
         document.getElementById("footerCuentaLabel").textContent = "Entrar";
         
-        // Mostrar botón login desktop
         var btnLogin = document.getElementById("btnLoginDesktop");
         if (btnLogin) btnLogin.style.display = "block";
     }
@@ -164,13 +162,13 @@ async function cargarMenu() {
     const data = await callAPI('/api/menu');
     
     if (data.error) {
-        document.getElementById("productsGrid").innerHTML = "<p style='text-align:center;color:#ef4444;'>Error al cargar</p>";
+        document.getElementById("productsGrid").textContent = "Error al cargar productos";
         return;
     }
     
-    menuData = data;
-    filteredProducts = menuData.productos.slice();
-    promocionesData = menuData.promociones || [];
+    _menuData = data;
+    _filteredProducts = _menuData.productos.slice();
+    _promocionesData = _menuData.promociones || [];
     
     renderBanners();
     renderDestacados();
@@ -192,49 +190,57 @@ function renderBanners() {
     var slider = document.getElementById("bannersSlider");
     var dots = document.getElementById("bannersDots");
     
-    if (!menuData.banners || menuData.banners.length === 0) {
+    if (!_menuData.banners || _menuData.banners.length === 0) {
         container.style.display = "none";
         return;
     }
     
     container.style.display = "block";
+    slider.innerHTML = '';
     
-    var slidesHtml = "";
-    for (var i = 0; i < menuData.banners.length; i++) {
-        var b = menuData.banners[i];
-        slidesHtml += "<div class='banner-slide'><img src='" + b.url + "' alt='' onerror='this.parentElement.style.display=\"none\"'></div>";
+    for (var i = 0; i < _menuData.banners.length; i++) {
+        var b = _menuData.banners[i];
+        var slide = document.createElement('div');
+        slide.className = 'banner-slide';
+        var img = document.createElement('img');
+        img.src = b.url;
+        img.alt = '';
+        img.onerror = function() { this.parentElement.style.display = 'none'; };
+        slide.appendChild(img);
+        slider.appendChild(slide);
     }
-    slider.innerHTML = slidesHtml;
     
-    var dotsHtml = "";
-    for (var j = 0; j < menuData.banners.length; j++) {
-        dotsHtml += "<div class='banner-dot " + (j === 0 ? "active" : "") + "' onclick='goToBanner(" + j + ")'></div>";
+    dots.innerHTML = '';
+    for (var j = 0; j < _menuData.banners.length; j++) {
+        var dot = document.createElement('div');
+        dot.className = 'banner-dot' + (j === 0 ? ' active' : '');
+        dot.setAttribute('data-index', j);
+        dot.onclick = function() {
+            window.goToBanner(parseInt(this.getAttribute('data-index')));
+        };
+        dots.appendChild(dot);
     }
-    dots.innerHTML = dotsHtml;
     
-    if (menuData.banners.length > 1) {
+    if (_menuData.banners.length > 1) {
         startBannerAutoplay();
     }
 }
 
-function goToBanner(index) {
-    currentBanner = index;
+window.goToBanner = function(index) {
+    _currentBanner = index;
     document.getElementById("bannersSlider").style.transform = "translateX(-" + (index * 100) + "%)";
     var allDots = document.querySelectorAll(".banner-dot");
     for (var i = 0; i < allDots.length; i++) {
-        if (i === index) {
-            allDots[i].classList.add("active");
-        } else {
-            allDots[i].classList.remove("active");
-        }
+        allDots[i].classList.remove("active");
     }
-}
+    if (allDots[index]) allDots[index].classList.add("active");
+};
 
 function startBannerAutoplay() {
-    if (bannerInterval) clearInterval(bannerInterval);
-    bannerInterval = setInterval(function() {
-        currentBanner = (currentBanner + 1) % menuData.banners.length;
-        goToBanner(currentBanner);
+    if (_bannerInterval) clearInterval(_bannerInterval);
+    _bannerInterval = setInterval(function() {
+        _currentBanner = (_currentBanner + 1) % _menuData.banners.length;
+        window.goToBanner(_currentBanner);
     }, 4000);
 }
 
@@ -243,86 +249,156 @@ function startBannerAutoplay() {
 // ================================
 function renderCategorias() {
     var container = document.getElementById("categoriesContainer");
-    var html = "<div class='category-chip active' data-cat='all' onclick='filtrarCategoria(\"all\")'>Todos</div>";
-    for (var i = 0; i < menuData.categorias.length; i++) {
-        var cat = menuData.categorias[i];
-        html += "<div class='category-chip' data-cat='" + cat.id + "' onclick='filtrarCategoria(\"" + cat.id + "\")'>" + cat.icono + " " + cat.nombre + "</div>";
+    container.innerHTML = '';
+    
+    var chipAll = document.createElement('div');
+    chipAll.className = 'category-chip active';
+    chipAll.setAttribute('data-cat', 'all');
+    chipAll.textContent = 'Todos';
+    chipAll.onclick = function() { window.filtrarCategoria('all'); };
+    container.appendChild(chipAll);
+    
+    for (var i = 0; i < _menuData.categorias.length; i++) {
+        var cat = _menuData.categorias[i];
+        var chip = document.createElement('div');
+        chip.className = 'category-chip';
+        chip.setAttribute('data-cat', cat.id);
+        chip.textContent = cat.icono + ' ' + cat.nombre;
+        chip.setAttribute('data-catid', cat.id);
+        chip.onclick = function() {
+            window.filtrarCategoria(this.getAttribute('data-catid'));
+        };
+        container.appendChild(chip);
     }
-    container.innerHTML = html;
 }
 
-function filtrarCategoria(catId) {
+window.filtrarCategoria = function(catId) {
     var chips = document.querySelectorAll(".category-chip");
     for (var i = 0; i < chips.length; i++) {
         chips[i].classList.remove("active");
+        if (chips[i].getAttribute('data-cat') === catId || chips[i].getAttribute('data-catid') === catId) {
+            chips[i].classList.add("active");
+        }
     }
-    event.target.classList.add("active");
     
     if (catId === "all") {
-        filteredProducts = menuData.productos.slice();
+        _filteredProducts = _menuData.productos.slice();
         document.getElementById("categoryTitle").textContent = "Todos los Platillos";
     } else {
-        filteredProducts = [];
-        for (var j = 0; j < menuData.productos.length; j++) {
-            if (menuData.productos[j].categoria === catId) {
-                filteredProducts.push(menuData.productos[j]);
+        _filteredProducts = [];
+        for (var j = 0; j < _menuData.productos.length; j++) {
+            if (_menuData.productos[j].categoria === catId) {
+                _filteredProducts.push(_menuData.productos[j]);
             }
         }
-        var cat = null;
-        for (var k = 0; k < menuData.categorias.length; k++) {
-            if (menuData.categorias[k].id === catId) {
-                cat = menuData.categorias[k];
-                break;
-            }
-        }
+        var cat = _menuData.categorias.find(c => c.id === catId);
         document.getElementById("categoryTitle").textContent = cat ? cat.nombre : "Platillos";
     }
     renderProductos();
-}
+};
 
 // ================================
 // PRODUCTOS
 // ================================
-function buscarProductos() {
+window.buscarProductos = function() {
     var term = document.getElementById("searchInput").value.toLowerCase();
-    filteredProducts = [];
-    for (var i = 0; i < menuData.productos.length; i++) {
-        var p = menuData.productos[i];
-        if (p.nombre.toLowerCase().indexOf(term) >= 0 || p.descripcion.toLowerCase().indexOf(term) >= 0) {
-            filteredProducts.push(p);
-        }
-    }
-    renderProductos();
-}
-
-function renderProductos() {
-    var grid = document.getElementById("productsGrid");
-    document.getElementById("productsCount").textContent = filteredProducts.length + " productos";
+    term = window._sanitizeHTML(term).substring(0, 100);
     
-    if (filteredProducts.length === 0) {
-        grid.innerHTML = "<p style='text-align:center;color:#6b7280;padding:40px;'>No hay productos</p>";
+    if (!window._validateInput.text(term, 100)) {
         return;
     }
     
-    var html = "";
-    for (var i = 0; i < filteredProducts.length; i++) {
-        var p = filteredProducts[i];
-        var hasImage = p.imagen && p.imagen.trim() !== "";
-        var imgHtml = hasImage ? "<img src='" + p.imagen + "' alt='" + p.nombre + "' onerror='this.parentElement.innerHTML=\"<div class=no-image><span>📷</span></div>\"'>" : "<div class='no-image'><span>📷</span></div>";
-        
-        html += "<div class='product-card' onclick='abrirModal(\"" + p.id + "\")'>";
-        html += "<div class='product-image'>" + imgHtml + "</div>";
-        html += "<div class='product-info'>";
-        html += "<div class='product-name'>" + p.nombre + "</div>";
-        html += "<div class='product-desc'>" + (p.descripcion || "") + "</div>";
-        html += "<div class='product-footer'>";
-        html += "<span class='product-price'>$" + p.precio.toFixed(2) + "</span>";
-        html += "<span class='product-time'>" + p.tiempo + "</span>";
-        html += "</div>";
-        html += "<button class='btn-add-cart' onclick='event.stopPropagation(); abrirModal(\"" + p.id + "\")'>Agregar</button>";
-        html += "</div></div>";
+    _filteredProducts = [];
+    for (var i = 0; i < _menuData.productos.length; i++) {
+        var p = _menuData.productos[i];
+        if (p.nombre.toLowerCase().indexOf(term) >= 0 || p.descripcion.toLowerCase().indexOf(term) >= 0) {
+            _filteredProducts.push(p);
+        }
     }
-    grid.innerHTML = html;
+    renderProductos();
+};
+
+function renderProductos() {
+    var grid = document.getElementById("productsGrid");
+    document.getElementById("productsCount").textContent = _filteredProducts.length + " productos";
+    
+    if (_filteredProducts.length === 0) {
+        grid.textContent = "No hay productos";
+        return;
+    }
+    
+    grid.innerHTML = '';
+    for (var i = 0; i < _filteredProducts.length; i++) {
+        var p = _filteredProducts[i];
+        var card = createProductCard(p);
+        grid.appendChild(card);
+    }
+}
+
+function createProductCard(p) {
+    var card = document.createElement('div');
+    card.className = 'product-card';
+    card.setAttribute('data-productid', p.id);
+    card.onclick = function() {
+        window.abrirModal(this.getAttribute('data-productid'));
+    };
+    
+    var imgDiv = document.createElement('div');
+    imgDiv.className = 'product-image';
+    if (p.imagen && p.imagen.trim() !== "") {
+        var img = document.createElement('img');
+        img.src = p.imagen;
+        img.alt = window._escapeHTML(p.nombre);
+        img.onerror = function() {
+            this.parentElement.innerHTML = '<div class="no-image"><span>📷</span></div>';
+        };
+        imgDiv.appendChild(img);
+    } else {
+        imgDiv.innerHTML = '<div class="no-image"><span>📷</span></div>';
+    }
+    card.appendChild(imgDiv);
+    
+    var info = document.createElement('div');
+    info.className = 'product-info';
+    
+    var name = document.createElement('div');
+    name.className = 'product-name';
+    name.textContent = p.nombre;
+    info.appendChild(name);
+    
+    var desc = document.createElement('div');
+    desc.className = 'product-desc';
+    desc.textContent = p.descripcion || '';
+    info.appendChild(desc);
+    
+    var footer = document.createElement('div');
+    footer.className = 'product-footer';
+    
+    var price = document.createElement('span');
+    price.className = 'product-price';
+    price.textContent = '$' + p.precio.toFixed(2);
+    footer.appendChild(price);
+    
+    var time = document.createElement('span');
+    time.className = 'product-time';
+    time.textContent = p.tiempo;
+    footer.appendChild(time);
+    
+    info.appendChild(footer);
+    
+    var btn = document.createElement('button');
+    btn.className = 'btn-add-cart';
+    btn.textContent = 'Agregar';
+    btn.setAttribute('data-productid', p.id);
+    btn.onclick = function(e) {
+        e.stopPropagation();
+        window.abrirModal(this.getAttribute('data-productid'));
+    };
+    info.appendChild(btn);
+    
+    card.appendChild(info);
+    
+    return card;
 }
 
 // ================================
@@ -335,7 +411,7 @@ function initViewToggle() {
     
     if (!grid || !btnGrid || !btnList) return;
     
-    if (currentView === "list") {
+    if (_currentView === "list") {
         grid.classList.remove("view-grid");
         grid.classList.add("view-list");
         btnGrid.classList.remove("active");
@@ -348,8 +424,8 @@ function initViewToggle() {
     }
 }
 
-function cambiarVista(vista) {
-    currentView = vista;
+window.cambiarVista = function(vista) {
+    _currentView = vista;
     localStorage.setItem("viewPreference", vista);
     
     var grid = document.getElementById("productsGrid");
@@ -369,7 +445,7 @@ function cambiarVista(vista) {
         btnGrid.classList.add("active");
         btnList.classList.remove("active");
     }
-}
+};
 
 // ================================
 // DESTACADOS
@@ -378,66 +454,87 @@ function renderDestacados() {
     var section = document.getElementById("destacadosSection");
     var container = document.getElementById("destacadosContainer");
     
-    if (!menuData.destacados || menuData.destacados.length === 0) {
+    if (!_menuData.destacados || _menuData.destacados.length === 0) {
         section.style.display = "none";
         return;
     }
     
     section.style.display = "block";
+    container.innerHTML = '';
     
-    var html = "";
-    for (var i = 0; i < menuData.destacados.length; i++) {
-        var p = menuData.destacados[i];
-        var hasImage = p.imagen && p.imagen.trim() !== "";
+    for (var i = 0; i < _menuData.destacados.length; i++) {
+        var p = _menuData.destacados[i];
         
-        html += "<div class='destacado-card' onclick='abrirModal(\"" + p.id + "\")'>";
-        html += "<div class='destacado-badge'>⭐ Popular</div>";
-        html += "<div class='destacado-card-img'>";
-        if (hasImage) {
-            html += "<img src='" + p.imagen + "' alt='" + p.nombre + "' onerror='this.parentElement.innerHTML=\"<div class=no-image>📷</div>\"'>";
+        var card = document.createElement('div');
+        card.className = 'destacado-card';
+        card.setAttribute('data-productid', p.id);
+        card.onclick = function() {
+            window.abrirModal(this.getAttribute('data-productid'));
+        };
+        
+        var badge = document.createElement('div');
+        badge.className = 'destacado-badge';
+        badge.textContent = '⭐ Popular';
+        card.appendChild(badge);
+        
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'destacado-card-img';
+        if (p.imagen && p.imagen.trim() !== "") {
+            var img = document.createElement('img');
+            img.src = p.imagen;
+            img.alt = window._escapeHTML(p.nombre);
+            img.onerror = function() {
+                this.parentElement.innerHTML = '<div class="no-image">📷</div>';
+            };
+            imgDiv.appendChild(img);
         } else {
-            html += "<div class='no-image'>📷</div>";
+            imgDiv.innerHTML = '<div class="no-image">📷</div>';
         }
-        html += "</div>";
-        html += "<div class='destacado-card-info'>";
-        html += "<div class='destacado-card-nombre'>" + p.nombre + "</div>";
-        html += "<div class='destacado-card-precio'>$" + p.precio.toFixed(2) + "</div>";
-        html += "</div>";
-        html += "</div>";
+        card.appendChild(imgDiv);
+        
+        var info = document.createElement('div');
+        info.className = 'destacado-card-info';
+        
+        var nombre = document.createElement('div');
+        nombre.className = 'destacado-card-nombre';
+        nombre.textContent = p.nombre;
+        info.appendChild(nombre);
+        
+        var precio = document.createElement('div');
+        precio.className = 'destacado-card-precio';
+        precio.textContent = '$' + p.precio.toFixed(2);
+        info.appendChild(precio);
+        
+        card.appendChild(info);
+        container.appendChild(card);
     }
-    
-    container.innerHTML = html;
 }
 
 function renderBannerSecundario() {
-    var containerExtra = document.getElementById("bannersExtraContainer");
     var container = document.getElementById("bannerSecundario");
     var img = document.getElementById("bannerSecundarioImg");
     
-    if (!menuData.bannersSecundario || menuData.bannersSecundario.length === 0) {
+    if (!_menuData.bannersSecundario || _menuData.bannersSecundario.length === 0) {
         container.style.display = "none";
     } else {
-        var banner = menuData.bannersSecundario[Math.floor(Math.random() * menuData.bannersSecundario.length)];
+        var banner = _menuData.bannersSecundario[Math.floor(Math.random() * _menuData.bannersSecundario.length)];
         img.src = banner.url;
         img.onerror = function() { container.style.display = "none"; checkBannersExtra(); };
         container.style.display = "block";
-        containerExtra.style.display = "grid";
     }
 }
 
 function renderBannerTerciario() {
-    var containerExtra = document.getElementById("bannersExtraContainer");
     var container = document.getElementById("bannerTerciario");
     var img = document.getElementById("bannerTerciarioImg");
     
-    if (!menuData.bannersTerciario || menuData.bannersTerciario.length === 0) {
+    if (!_menuData.bannersTerciario || _menuData.bannersTerciario.length === 0) {
         container.style.display = "none";
     } else {
-        var banner = menuData.bannersTerciario[Math.floor(Math.random() * menuData.bannersTerciario.length)];
+        var banner = _menuData.bannersTerciario[Math.floor(Math.random() * _menuData.bannersTerciario.length)];
         img.src = banner.url;
         img.onerror = function() { container.style.display = "none"; checkBannersExtra(); };
         container.style.display = "block";
-        containerExtra.style.display = "grid";
     }
     
     checkBannersExtra();
@@ -448,8 +545,12 @@ function checkBannersExtra() {
     var ter = document.getElementById("bannerTerciario");
     var container = document.getElementById("bannersExtraContainer");
     
-    if (sec.style.display === "none" && ter.style.display === "none") {
-        container.style.display = "none";
+    if (sec && ter && container) {
+        if (sec.style.display === "none" && ter.style.display === "none") {
+            container.style.display = "none";
+        } else {
+            container.style.display = "grid";
+        }
     }
 }
 
@@ -460,122 +561,163 @@ function renderPromociones() {
     var section = document.getElementById("promocionesSection");
     var container = document.getElementById("promocionesContainer");
     
-    if (promocionesData.length === 0) {
+    if (_promocionesData.length === 0) {
         section.style.display = "none";
         return;
     }
     
     section.style.display = "block";
+    container.innerHTML = '';
     
-    var html = "";
-    for (var i = 0; i < promocionesData.length; i++) {
-        var p = promocionesData[i];
-        var hasImage = p.imagen && p.imagen.trim() !== "";
+    for (var i = 0; i < _promocionesData.length; i++) {
+        var p = _promocionesData[i];
         
-        html += "<div class='promo-card' onclick='abrirModalPromo(\"" + p.id + "\")'>";
-        html += "<div class='promo-card-badge'>-" + p.descuentoPct + "%</div>";
-        html += "<div class='promo-card-imagen'>";
-        if (hasImage) {
-            html += "<img src='" + p.imagen + "' alt='" + p.nombre + "'>";
+        var card = document.createElement('div');
+        card.className = 'promo-card';
+        card.setAttribute('data-promoid', p.id);
+        card.onclick = function() {
+            window.abrirModalPromo(this.getAttribute('data-promoid'));
+        };
+        
+        var badge = document.createElement('div');
+        badge.className = 'promo-card-badge';
+        badge.textContent = '-' + p.descuentoPct + '%';
+        card.appendChild(badge);
+        
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'promo-card-imagen';
+        if (p.imagen && p.imagen.trim() !== "") {
+            var img = document.createElement('img');
+            img.src = p.imagen;
+            img.alt = window._escapeHTML(p.nombre);
+            imgDiv.appendChild(img);
         } else {
-            html += "<div class='no-image'>🎁</div>";
+            imgDiv.innerHTML = '<div class="no-image">🎁</div>';
         }
-        html += "</div>";
-        html += "<div class='promo-card-body'>";
-        html += "<div class='promo-card-nombre'>" + p.nombre + "</div>";
-        html += "<div class='promo-card-desc'>" + p.descripcion + "</div>";
-        html += "<div class='promo-card-precios'>";
-        html += "<span class='promo-card-precio-normal'>$" + p.precioNormal.toFixed(2) + "</span>";
-        html += "<span class='promo-card-precio-promo'>$" + p.precioPromo.toFixed(2) + "</span>";
-        html += "</div>";
-        html += "<div class='promo-card-ahorro'>Ahorras $" + p.ahorro.toFixed(2) + "</div>";
-        html += "</div>";
-        html += "</div>";
+        card.appendChild(imgDiv);
+        
+        var body = document.createElement('div');
+        body.className = 'promo-card-body';
+        
+        var nombre = document.createElement('div');
+        nombre.className = 'promo-card-nombre';
+        nombre.textContent = p.nombre;
+        body.appendChild(nombre);
+        
+        var desc = document.createElement('div');
+        desc.className = 'promo-card-desc';
+        desc.textContent = p.descripcion;
+        body.appendChild(desc);
+        
+        var precios = document.createElement('div');
+        precios.className = 'promo-card-precios';
+        
+        var precioNormal = document.createElement('span');
+        precioNormal.className = 'promo-card-precio-normal';
+        precioNormal.textContent = '$' + p.precioNormal.toFixed(2);
+        precios.appendChild(precioNormal);
+        
+        var precioPromo = document.createElement('span');
+        precioPromo.className = 'promo-card-precio-promo';
+        precioPromo.textContent = '$' + p.precioPromo.toFixed(2);
+        precios.appendChild(precioPromo);
+        
+        body.appendChild(precios);
+        
+        var ahorro = document.createElement('div');
+        ahorro.className = 'promo-card-ahorro';
+        ahorro.textContent = 'Ahorras $' + p.ahorro.toFixed(2);
+        body.appendChild(ahorro);
+        
+        card.appendChild(body);
+        container.appendChild(card);
     }
-    
-    container.innerHTML = html;
 }
 
-function abrirModalPromo(promoId) {
-    currentPromo = null;
-    for (var i = 0; i < promocionesData.length; i++) {
-        if (promocionesData[i].id === promoId) {
-            currentPromo = promocionesData[i];
+window.abrirModalPromo = function(promoId) {
+    _currentPromo = null;
+    for (var i = 0; i < _promocionesData.length; i++) {
+        if (_promocionesData[i].id === promoId) {
+            _currentPromo = _promocionesData[i];
             break;
         }
     }
-    if (!currentPromo) return;
+    if (!_currentPromo) return;
     
-    promoCantidad = 1;
+    _promoCantidad = 1;
     
     var imgContainer = document.getElementById("promoModalImagen");
-    if (currentPromo.imagen) {
-        imgContainer.innerHTML = "<img src='" + currentPromo.imagen + "' alt='" + currentPromo.nombre + "'>";
+    imgContainer.innerHTML = '';
+    if (_currentPromo.imagen) {
+        var img = document.createElement('img');
+        img.src = _currentPromo.imagen;
+        img.alt = window._escapeHTML(_currentPromo.nombre);
+        imgContainer.appendChild(img);
     } else {
-        imgContainer.innerHTML = "<div class='no-image'>🎁</div>";
+        imgContainer.innerHTML = '<div class="no-image">🎁</div>';
     }
     
-    document.getElementById("promoModalBadge").textContent = "-" + currentPromo.descuentoPct + "%";
-    document.getElementById("promoModalNombre").textContent = currentPromo.nombre;
-    document.getElementById("promoModalDesc").textContent = currentPromo.descripcion;
-    document.getElementById("promoModalPrecioNormal").textContent = "$" + currentPromo.precioNormal.toFixed(2);
-    document.getElementById("promoModalPrecioPromo").textContent = "$" + currentPromo.precioPromo.toFixed(2);
-    document.getElementById("promoModalAhorro").textContent = "¡Ahorras $" + currentPromo.ahorro.toFixed(2) + "!";
+    document.getElementById("promoModalBadge").textContent = "-" + _currentPromo.descuentoPct + "%";
+    document.getElementById("promoModalNombre").textContent = _currentPromo.nombre;
+    document.getElementById("promoModalDesc").textContent = _currentPromo.descripcion;
+    document.getElementById("promoModalPrecioNormal").textContent = "$" + _currentPromo.precioNormal.toFixed(2);
+    document.getElementById("promoModalPrecioPromo").textContent = "$" + _currentPromo.precioPromo.toFixed(2);
+    document.getElementById("promoModalAhorro").textContent = "¡Ahorras $" + _currentPromo.ahorro.toFixed(2) + "!";
     
-    var productosHtml = "";
-    for (var j = 0; j < currentPromo.productos.length; j++) {
-        var prod = currentPromo.productos[j];
-        productosHtml += "<div class='promo-producto-item'>";
-        productosHtml += "<span class='check'>✓</span>";
-        productosHtml += "<span class='cantidad'>" + prod.cantidad + "x</span>";
-        productosHtml += "<span>" + prod.nombreProducto + "</span>";
-        productosHtml += "</div>";
+    var lista = document.getElementById("promoProductosLista");
+    lista.innerHTML = '';
+    for (var j = 0; j < _currentPromo.productos.length; j++) {
+        var prod = _currentPromo.productos[j];
+        var item = document.createElement('div');
+        item.className = 'promo-producto-item';
+        item.innerHTML = '<span class="check">✓</span><span class="cantidad">' + prod.cantidad + 'x</span><span>' + window._escapeHTML(prod.nombreProducto) + '</span>';
+        lista.appendChild(item);
     }
-    document.getElementById("promoProductosLista").innerHTML = productosHtml;
     
-    document.getElementById("promoModalCantidad").textContent = promoCantidad;
-    document.getElementById("promoModalTotal").textContent = "$" + (currentPromo.precioPromo * promoCantidad).toFixed(2);
+    document.getElementById("promoModalCantidad").textContent = _promoCantidad;
+    document.getElementById("promoModalTotal").textContent = "$" + (_currentPromo.precioPromo * _promoCantidad).toFixed(2);
     
     document.getElementById("modalPromocion").classList.add("show");
     document.body.style.overflow = "hidden";
-}
+};
 
-function cerrarModalPromo() {
+window.cerrarModalPromo = function() {
     document.getElementById("modalPromocion").classList.remove("show");
     document.body.style.overflow = "";
-    currentPromo = null;
-}
+    _currentPromo = null;
+};
 
-function cambiarCantidadPromo(delta) {
-    promoCantidad = Math.max(1, promoCantidad + delta);
-    document.getElementById("promoModalCantidad").textContent = promoCantidad;
-    document.getElementById("promoModalTotal").textContent = "$" + (currentPromo.precioPromo * promoCantidad).toFixed(2);
-}
+window.cambiarCantidadPromo = function(delta) {
+    _promoCantidad = Math.max(1, _promoCantidad + delta);
+    document.getElementById("promoModalCantidad").textContent = _promoCantidad;
+    document.getElementById("promoModalTotal").textContent = "$" + (_currentPromo.precioPromo * _promoCantidad).toFixed(2);
+};
 
-function agregarPromoAlCarrito() {
-    if (!currentPromo) return;
+window.agregarPromoAlCarrito = function() {
+    if (!_currentPromo) return;
     
     var item = {
-        id: "PROMO_" + currentPromo.id + "_" + Date.now(),
-        productoId: "PROMO_" + currentPromo.id,
-        nombre: "🎁 " + currentPromo.nombre,
-        imagen: currentPromo.imagen,
-        precio: currentPromo.precioPromo,
-        cantidad: promoCantidad,
+        id: "PROMO_" + _currentPromo.id + "_" + Date.now(),
+        productoId: "PROMO_" + _currentPromo.id,
+        nombre: "🎁 " + _currentPromo.nombre,
+        imagen: _currentPromo.imagen,
+        precio: _currentPromo.precioPromo,
+        cantidad: _promoCantidad,
         extras: [],
         extrasTotal: 0,
-        subtotal: currentPromo.precioPromo * promoCantidad,
+        subtotal: _currentPromo.precioPromo * _promoCantidad,
         notas: "",
         esPromocion: true,
-        productosIncluidos: currentPromo.productos
+        productosIncluidos: _currentPromo.productos
     };
     
-    cart.push(item);
+    _cart.push(item);
     saveCart();
     updateCartUI();
-    cerrarModalPromo();
+    window.cerrarModalPromo();
     mostrarToast("¡Promoción agregada al carrito!");
-}
+};
+
 // ================================
 // ÚLTIMOS VISTOS
 // ================================
@@ -583,53 +725,66 @@ function renderUltimosVistos() {
     var section = document.getElementById("ultimosVistosSection");
     var container = document.getElementById("ultimosVistosContainer");
     
-    if (ultimosVistos.length === 0) {
+    if (_ultimosVistos.length === 0) {
         section.style.display = "none";
         return;
     }
     
     section.style.display = "block";
+    container.innerHTML = '';
     
-    var html = "";
-    for (var i = 0; i < ultimosVistos.length; i++) {
-        var id = ultimosVistos[i];
-        var p = null;
-        for (var j = 0; j < menuData.productos.length; j++) {
-            if (menuData.productos[j].id === id) {
-                p = menuData.productos[j];
-                break;
-            }
-        }
+    for (var i = 0; i < _ultimosVistos.length; i++) {
+        var id = _ultimosVistos[i];
+        var p = _menuData.productos.find(prod => prod.id === id);
         if (!p) continue;
         
-        html += "<div class='ultimo-card' onclick='abrirModal(\"" + p.id + "\")'>";
-        html += "<div class='ultimo-card-img'>";
+        var card = document.createElement('div');
+        card.className = 'ultimo-card';
+        card.setAttribute('data-productid', p.id);
+        card.onclick = function() {
+            window.abrirModal(this.getAttribute('data-productid'));
+        };
+        
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'ultimo-card-img';
         if (p.imagen) {
-            html += "<img src='" + p.imagen + "' alt='" + p.nombre + "'>";
+            var img = document.createElement('img');
+            img.src = p.imagen;
+            img.alt = window._escapeHTML(p.nombre);
+            imgDiv.appendChild(img);
         } else {
-            html += "<div class='no-image'>📷</div>";
+            imgDiv.innerHTML = '<div class="no-image">📷</div>';
         }
-        html += "</div>";
-        html += "<div class='ultimo-card-info'>";
-        html += "<div class='ultimo-card-nombre'>" + p.nombre + "</div>";
-        html += "<div class='ultimo-card-precio'>$" + p.precio.toFixed(2) + "</div>";
-        html += "</div>";
-        html += "</div>";
+        card.appendChild(imgDiv);
+        
+        var info = document.createElement('div');
+        info.className = 'ultimo-card-info';
+        
+        var nombre = document.createElement('div');
+        nombre.className = 'ultimo-card-nombre';
+        nombre.textContent = p.nombre;
+        info.appendChild(nombre);
+        
+        var precio = document.createElement('div');
+        precio.className = 'ultimo-card-precio';
+        precio.textContent = '$' + p.precio.toFixed(2);
+        info.appendChild(precio);
+        
+        card.appendChild(info);
+        container.appendChild(card);
     }
-    
-    container.innerHTML = html;
 }
 
 function agregarUltimoVisto(productoId) {
-    var index = ultimosVistos.indexOf(productoId);
+    var index = _ultimosVistos.indexOf(productoId);
     if (index > -1) {
-        ultimosVistos.splice(index, 1);
+        _ultimosVistos.splice(index, 1);
     }
-    ultimosVistos.unshift(productoId);
-    if (ultimosVistos.length > MAX_ULTIMOS) {
-        ultimosVistos = ultimosVistos.slice(0, MAX_ULTIMOS);
+    _ultimosVistos.unshift(productoId);
+    if (_ultimosVistos.length > _MAX_ULTIMOS) {
+        _ultimosVistos = _ultimosVistos.slice(0, _MAX_ULTIMOS);
     }
-    localStorage.setItem("uniline_ultimos", JSON.stringify(ultimosVistos));
+    localStorage.setItem("uniline_ultimos", JSON.stringify(_ultimosVistos));
     renderUltimosVistos();
 }
 
@@ -638,113 +793,115 @@ function agregarUltimoVisto(productoId) {
 // ================================
 function renderProductosPorCategoria() {
     var container = document.getElementById("productosPorCategoria");
-    var html = "";
+    container.innerHTML = '';
     
-    for (var i = 0; i < menuData.categorias.length; i++) {
-        var cat = menuData.categorias[i];
-        var prods = [];
-        for (var j = 0; j < menuData.productos.length; j++) {
-            if (menuData.productos[j].categoria === cat.id) {
-                prods.push(menuData.productos[j]);
-            }
-        }
+    for (var i = 0; i < _menuData.categorias.length; i++) {
+        var cat = _menuData.categorias[i];
+        var prods = _menuData.productos.filter(p => p.categoria === cat.id);
         
         if (prods.length === 0) continue;
         
-        html += "<div class='categoria-grupo'>";
-        html += "<div class='categoria-grupo-header'>";
-        html += "<h3>" + cat.icono + " " + cat.nombre + "</h3>";
-        html += "<span class='categoria-grupo-count'>" + prods.length + " productos</span>";
-        html += "</div>";
-        html += "<div class='categoria-grupo-productos'>";
+        var grupo = document.createElement('div');
+        grupo.className = 'categoria-grupo';
+        
+        var header = document.createElement('div');
+        header.className = 'categoria-grupo-header';
+        header.innerHTML = '<h3>' + cat.icono + ' ' + cat.nombre + '</h3><span class="categoria-grupo-count">' + prods.length + ' productos</span>';
+        grupo.appendChild(header);
+        
+        var prodContainer = document.createElement('div');
+        prodContainer.className = 'categoria-grupo-productos';
         
         for (var k = 0; k < prods.length; k++) {
-            var p = prods[k];
-            var hasImage = p.imagen && p.imagen.trim() !== "";
-            
-            html += "<div class='product-card' onclick='abrirModal(\"" + p.id + "\")'>";
-            html += "<div class='product-image'>";
-            if (hasImage) {
-                html += "<img src='" + p.imagen + "' alt='" + p.nombre + "'>";
-            } else {
-                html += "<div class='no-image'><span>📷</span></div>";
-            }
-            html += "</div>";
-            html += "<div class='product-info'>";
-            html += "<div class='product-name'>" + p.nombre + "</div>";
-            html += "<div class='product-desc'>" + (p.descripcion || "") + "</div>";
-            html += "<div class='product-footer'>";
-            html += "<span class='product-price'>$" + p.precio.toFixed(2) + "</span>";
-            html += "<span class='product-time'>" + p.tiempo + "</span>";
-            html += "</div>";
-            html += "<button class='btn-add-cart' onclick='event.stopPropagation(); abrirModal(\"" + p.id + "\")'>Agregar</button>";
-            html += "</div></div>";
+            var card = createProductCard(prods[k]);
+            prodContainer.appendChild(card);
         }
         
-        html += "</div></div>";
+        grupo.appendChild(prodContainer);
+        container.appendChild(grupo);
     }
-    
-    container.innerHTML = html;
 }
 
 // ================================
 // MODAL PRODUCTO
 // ================================
-function abrirModal(productoId) {
-    currentProduct = null;
-    for (var i = 0; i < menuData.productos.length; i++) {
-        if (menuData.productos[i].id === productoId) {
-            currentProduct = menuData.productos[i];
-            break;
-        }
-    }
-    if (!currentProduct) return;
+window.abrirModal = function(productoId) {
+    _currentProduct = _menuData.productos.find(p => p.id === productoId);
+    if (!_currentProduct) return;
     
     agregarUltimoVisto(productoId);
     
-    modalQuantity = 1;
-    selectedExtras = [];
+    _modalQuantity = 1;
+    _selectedExtras = [];
     
     var imgContainer = document.getElementById("modalImagen");
-    if (currentProduct.imagen) {
-        imgContainer.innerHTML = "<img src='" + currentProduct.imagen + "' alt='" + currentProduct.nombre + "' onerror='this.parentElement.innerHTML=\"<div class=no-image>📷</div>\"'>";
+    imgContainer.innerHTML = '';
+    if (_currentProduct.imagen) {
+        var img = document.createElement('img');
+        img.src = _currentProduct.imagen;
+        img.alt = window._escapeHTML(_currentProduct.nombre);
+        img.onerror = function() {
+            this.parentElement.innerHTML = '<div class="no-image">📷</div>';
+        };
+        imgContainer.appendChild(img);
     } else {
-        imgContainer.innerHTML = "<div class='no-image'>📷</div>";
+        imgContainer.innerHTML = '<div class="no-image">📷</div>';
     }
     
-    document.getElementById("modalNombre").textContent = currentProduct.nombre;
-    document.getElementById("modalDescripcion").textContent = currentProduct.descripcion || "";
-    document.getElementById("modalPrecio").textContent = "$" + currentProduct.precio.toFixed(2);
-    document.getElementById("modalTiempo").textContent = currentProduct.tiempo;
+    document.getElementById("modalNombre").textContent = _currentProduct.nombre;
+    document.getElementById("modalDescripcion").textContent = _currentProduct.descripcion || "";
+    document.getElementById("modalPrecio").textContent = "$" + _currentProduct.precio.toFixed(2);
+    document.getElementById("modalTiempo").textContent = _currentProduct.tiempo;
     document.getElementById("modalNotas").value = "";
     
     var extrasSection = document.getElementById("extrasSection");
-    if (currentProduct.tieneExtras) {
+    if (_currentProduct.tieneExtras) {
         var disponibles = [];
-        for (var i = 0; i < menuData.productoExtras.length; i++) {
-            if (menuData.productoExtras[i].productoId === currentProduct.id) {
-                var extraId = menuData.productoExtras[i].extraId;
-                for (var j = 0; j < menuData.extras.length; j++) {
-                    if (menuData.extras[j].id === extraId) {
-                        disponibles.push(menuData.extras[j]);
-                        break;
-                    }
-                }
+        for (var i = 0; i < _menuData.productoExtras.length; i++) {
+            if (_menuData.productoExtras[i].productoId === _currentProduct.id) {
+                var extraId = _menuData.productoExtras[i].extraId;
+                var extra = _menuData.extras.find(e => e.id === extraId);
+                if (extra) disponibles.push(extra);
             }
         }
         
         if (disponibles.length > 0) {
             extrasSection.style.display = "block";
-            var html = "";
+            var lista = document.getElementById("extrasList");
+            lista.innerHTML = '';
+            
             for (var k = 0; k < disponibles.length; k++) {
                 var e = disponibles[k];
-                html += "<div class='extra-item' onclick='toggleExtra(\"" + e.id + "\", \"" + e.nombre + "\", " + e.precio + ")'>";
-                html += "<div class='extra-check' id='check_" + e.id + "'></div>";
-                html += "<span class='extra-name'>" + e.nombre + "</span>";
-                html += "<span class='extra-price'>+$" + e.precio.toFixed(2) + "</span>";
-                html += "</div>";
+                var item = document.createElement('div');
+                item.className = 'extra-item';
+                item.setAttribute('data-extraid', e.id);
+                item.setAttribute('data-extranombre', e.nombre);
+                item.setAttribute('data-extraprecio', e.precio);
+                item.onclick = function() {
+                    window.toggleExtra(
+                        this.getAttribute('data-extraid'),
+                        this.getAttribute('data-extranombre'),
+                        parseFloat(this.getAttribute('data-extraprecio'))
+                    );
+                };
+                
+                var check = document.createElement('div');
+                check.className = 'extra-check';
+                check.id = 'check_' + e.id;
+                item.appendChild(check);
+                
+                var nombre = document.createElement('span');
+                nombre.className = 'extra-name';
+                nombre.textContent = e.nombre;
+                item.appendChild(nombre);
+                
+                var precio = document.createElement('span');
+                precio.className = 'extra-price';
+                precio.textContent = '+$' + e.precio.toFixed(2);
+                item.appendChild(precio);
+                
+                lista.appendChild(item);
             }
-            document.getElementById("extrasList").innerHTML = html;
         } else {
             extrasSection.style.display = "none";
         }
@@ -752,53 +909,49 @@ function abrirModal(productoId) {
         extrasSection.style.display = "none";
     }
     
-    document.getElementById("modalCantidad").textContent = modalQuantity;
+    document.getElementById("modalCantidad").textContent = _modalQuantity;
     actualizarTotalModal();
     renderSimilares();
     
     document.getElementById("modalProducto").classList.add("show");
     document.body.style.overflow = "hidden";
-}
+};
 
-function cerrarModal() {
+window.cerrarModal = function() {
     document.getElementById("modalProducto").classList.remove("show");
     document.body.style.overflow = "";
-    currentProduct = null;
-}
+    _currentProduct = null;
+};
 
-function toggleExtra(id, nombre, precio) {
-    var index = -1;
-    for (var i = 0; i < selectedExtras.length; i++) {
-        if (selectedExtras[i].id === id) {
-            index = i;
-            break;
-        }
-    }
+window.toggleExtra = function(id, nombre, precio) {
+    var index = _selectedExtras.findIndex(e => e.id === id);
+    var checkEl = document.getElementById("check_" + id);
+    var itemEl = document.querySelector('[data-extraid="' + id + '"]');
     
     if (index >= 0) {
-        selectedExtras.splice(index, 1);
-        document.getElementById("check_" + id).textContent = "";
-        document.querySelector('[onclick*="' + id + '"]').classList.remove("selected");
+        _selectedExtras.splice(index, 1);
+        if (checkEl) checkEl.textContent = "";
+        if (itemEl) itemEl.classList.remove("selected");
     } else {
-        selectedExtras.push({ id: id, nombre: nombre, precio: precio });
-        document.getElementById("check_" + id).textContent = "✓";
-        document.querySelector('[onclick*="' + id + '"]').classList.add("selected");
+        _selectedExtras.push({ id: id, nombre: nombre, precio: precio });
+        if (checkEl) checkEl.textContent = "✓";
+        if (itemEl) itemEl.classList.add("selected");
     }
     actualizarTotalModal();
-}
+};
 
-function cambiarCantidad(delta) {
-    modalQuantity = Math.max(1, modalQuantity + delta);
-    document.getElementById("modalCantidad").textContent = modalQuantity;
+window.cambiarCantidad = function(delta) {
+    _modalQuantity = Math.max(1, _modalQuantity + delta);
+    document.getElementById("modalCantidad").textContent = _modalQuantity;
     actualizarTotalModal();
-}
+};
 
 function actualizarTotalModal() {
     var extrasTotal = 0;
-    for (var i = 0; i < selectedExtras.length; i++) {
-        extrasTotal += selectedExtras[i].precio;
+    for (var i = 0; i < _selectedExtras.length; i++) {
+        extrasTotal += _selectedExtras[i].precio;
     }
-    var total = (currentProduct.precio + extrasTotal) * modalQuantity;
+    var total = (_currentProduct.precio + extrasTotal) * _modalQuantity;
     document.getElementById("modalTotal").textContent = "$" + total.toFixed(2);
 }
 
@@ -806,18 +959,14 @@ function renderSimilares() {
     var section = document.getElementById("similaresSection");
     var container = document.getElementById("similaresContainer");
     
-    if (!currentProduct) {
+    if (!_currentProduct) {
         section.style.display = "none";
         return;
     }
     
-    var similares = [];
-    for (var i = 0; i < menuData.productos.length; i++) {
-        var p = menuData.productos[i];
-        if (p.categoria === currentProduct.categoria && p.id !== currentProduct.id) {
-            similares.push(p);
-        }
-    }
+    var similares = _menuData.productos.filter(p => 
+        p.categoria === _currentProduct.categoria && p.id !== _currentProduct.id
+    );
     
     if (similares.length === 0) {
         section.style.display = "none";
@@ -825,74 +974,96 @@ function renderSimilares() {
     }
     
     section.style.display = "block";
+    container.innerHTML = '';
     
-    var html = "";
     for (var j = 0; j < Math.min(similares.length, 5); j++) {
         var p = similares[j];
-        html += "<div class='similar-card' onclick='cerrarModal(); setTimeout(function(){abrirModal(\"" + p.id + "\")}, 300);'>";
-        html += "<div class='similar-card-img'>";
+        var card = document.createElement('div');
+        card.className = 'similar-card';
+        card.setAttribute('data-productid', p.id);
+        card.onclick = function() {
+            window.cerrarModal();
+            setTimeout(function() {
+                window.abrirModal(this.getAttribute('data-productid'));
+            }.bind(this), 300);
+        };
+        
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'similar-card-img';
         if (p.imagen) {
-            html += "<img src='" + p.imagen + "' alt='" + p.nombre + "'>";
+            var img = document.createElement('img');
+            img.src = p.imagen;
+            img.alt = window._escapeHTML(p.nombre);
+            imgDiv.appendChild(img);
         } else {
-            html += "<div class='no-image'>📷</div>";
+            imgDiv.innerHTML = '<div class="no-image">📷</div>';
         }
-        html += "</div>";
-        html += "<div class='similar-card-info'>";
-        html += "<div class='similar-card-nombre'>" + p.nombre + "</div>";
-        html += "<div class='similar-card-precio'>$" + p.precio.toFixed(2) + "</div>";
-        html += "</div>";
-        html += "</div>";
+        card.appendChild(imgDiv);
+        
+        var info = document.createElement('div');
+        info.className = 'similar-card-info';
+        
+        var nombre = document.createElement('div');
+        nombre.className = 'similar-card-nombre';
+        nombre.textContent = p.nombre;
+        info.appendChild(nombre);
+        
+        var precio = document.createElement('div');
+        precio.className = 'similar-card-precio';
+        precio.textContent = '$' + p.precio.toFixed(2);
+        info.appendChild(precio);
+        
+        card.appendChild(info);
+        container.appendChild(card);
     }
-    container.innerHTML = html;
 }
 
-function agregarAlCarrito() {
-    if (!currentProduct) return;
+window.agregarAlCarrito = function() {
+    if (!_currentProduct) return;
     
     var extrasTotal = 0;
     var extrasIds = [];
-    var extrasNombres = [];
     
-    for (var i = 0; i < selectedExtras.length; i++) {
-        extrasTotal += selectedExtras[i].precio;
-        extrasIds.push(selectedExtras[i].id);
-        extrasNombres.push(selectedExtras[i].nombre);
+    for (var i = 0; i < _selectedExtras.length; i++) {
+        extrasTotal += _selectedExtras[i].precio;
+        extrasIds.push(_selectedExtras[i].id);
     }
     
     var notas = document.getElementById("modalNotas").value.trim();
+    notas = window._sanitizeHTML(notas).substring(0, 500);
     
     var item = {
-        id: currentProduct.id + "_" + Date.now(),
-        productoId: currentProduct.id,
-        nombre: currentProduct.nombre,
-        imagen: currentProduct.imagen,
-        precio: currentProduct.precio,
-        cantidad: modalQuantity,
-        extras: selectedExtras.slice(),
+        id: _currentProduct.id + "_" + Date.now(),
+        productoId: _currentProduct.id,
+        nombre: _currentProduct.nombre,
+        imagen: _currentProduct.imagen,
+        precio: _currentProduct.precio,
+        cantidad: _modalQuantity,
+        extras: _selectedExtras.slice(),
         extrasIds: extrasIds.join(","),
         extrasTotal: extrasTotal,
-        subtotal: (currentProduct.precio + extrasTotal) * modalQuantity,
+        subtotal: (_currentProduct.precio + extrasTotal) * _modalQuantity,
         notas: notas
     };
     
-    cart.push(item);
+    _cart.push(item);
     saveCart();
     updateCartUI();
-    cerrarModal();
+    window.cerrarModal();
     mostrarToast("¡Producto agregado al carrito!");
-}
+};
 
 // ================================
 // CARRITO
 // ================================
 function saveCart() {
-    localStorage.setItem("uniline_cart", JSON.stringify(cart));
+    window._secureStorage.set("uniline_cart", _cart);
 }
 
 function loadCart() {
-    var saved = localStorage.getItem("uniline_cart");
-    if (saved) {
-        cart = JSON.parse(saved);
+    var saved = window._secureStorage.get("uniline_cart");
+    if (saved && Array.isArray(saved)) {
+        _cart = saved;
     }
     updateCartUI();
 }
@@ -901,9 +1072,9 @@ function updateCartUI() {
     var totalItems = 0;
     var subtotal = 0;
     
-    for (var i = 0; i < cart.length; i++) {
-        totalItems += cart[i].cantidad;
-        subtotal += cart[i].subtotal;
+    for (var i = 0; i < _cart.length; i++) {
+        totalItems += _cart[i].cantidad;
+        subtotal += _cart[i].subtotal;
     }
     
     document.getElementById("cartBadge").textContent = totalItems;
@@ -912,8 +1083,8 @@ function updateCartUI() {
     var itemsContainer = document.getElementById("cartItems");
     var footer = document.getElementById("cartFooter");
     
-if (cart.length === 0) {
-    itemsContainer.innerHTML = "<div class='cart-empty'><span>🛒</span><p>Tu carrito está vacío</p><button class='btn-comenzar' onclick='toggleCart(); setTimeout(function(){mostrarSeccion(\"menu\")}, 300);'>Comenzar a pedir</button></div>";
+    if (_cart.length === 0) {
+        itemsContainer.innerHTML = "<div class='cart-empty'><span>🛒</span><p>Tu carrito está vacío</p><button class='btn-comenzar' onclick='toggleCart(); setTimeout(function(){mostrarSeccion(\"menu\")}, 300);'>Comenzar a pedir</button></div>";
         footer.style.display = "none";
         document.getElementById("carritoFlotante").style.display = "none";
         return;
@@ -922,44 +1093,89 @@ if (cart.length === 0) {
     footer.style.display = "block";
     document.getElementById("carritoFlotante").style.display = "flex";
     
-    var html = "";
-    for (var j = 0; j < cart.length; j++) {
-        var item = cart[j];
-        var hasImage = item.imagen && item.imagen.trim() !== "";
+    itemsContainer.innerHTML = '';
+    for (var j = 0; j < _cart.length; j++) {
+        var item = _cart[j];
         
-        html += "<div class='cart-item'>";
-        html += "<div class='cart-item-img'>";
-        if (hasImage) {
-            html += "<img src='" + item.imagen + "' alt='" + item.nombre + "'>";
+        var cartItem = document.createElement('div');
+        cartItem.className = 'cart-item';
+        
+        var imgDiv = document.createElement('div');
+        imgDiv.className = 'cart-item-img';
+        if (item.imagen && item.imagen.trim() !== "") {
+            var img = document.createElement('img');
+            img.src = item.imagen;
+            img.alt = window._escapeHTML(item.nombre);
+            imgDiv.appendChild(img);
         } else {
-            html += "<div class='no-img'>📷</div>";
+            imgDiv.innerHTML = '<div class="no-img">📷</div>';
         }
-        html += "</div>";
-        html += "<div class='cart-item-info'>";
-        html += "<div class='cart-item-name'>" + item.nombre + "</div>";
+        cartItem.appendChild(imgDiv);
+        
+        var info = document.createElement('div');
+        info.className = 'cart-item-info';
+        
+        var nombre = document.createElement('div');
+        nombre.className = 'cart-item-name';
+        nombre.textContent = item.nombre;
+        info.appendChild(nombre);
+        
         if (item.extras && item.extras.length > 0) {
-            var extrasStr = "";
-            for (var k = 0; k < item.extras.length; k++) {
-                extrasStr += item.extras[k].nombre + ", ";
-            }
-            extrasStr = extrasStr.slice(0, -2);
-            html += "<div class='cart-item-extras'>+ " + extrasStr + "</div>";
+            var extrasStr = item.extras.map(e => e.nombre).join(", ");
+            var extras = document.createElement('div');
+            extras.className = 'cart-item-extras';
+            extras.textContent = '+ ' + extrasStr;
+            info.appendChild(extras);
         }
+        
         if (item.notas) {
-            html += "<div class='cart-item-notas'>📝 " + item.notas + "</div>";
+            var notas = document.createElement('div');
+            notas.className = 'cart-item-notas';
+            notas.textContent = '📝 ' + item.notas;
+            info.appendChild(notas);
         }
-        html += "<div class='cart-item-price'>$" + item.subtotal.toFixed(2) + "</div>";
-        html += "<div class='cart-item-actions'>";
-        html += "<button onclick='changeItemQuantity(" + j + ", -1)'>−</button>";
-        html += "<span>" + item.cantidad + "</span>";
-        html += "<button onclick='changeItemQuantity(" + j + ", 1)'>+</button>";
-        html += "<button class='cart-item-remove' onclick='removeItem(" + j + ")'>🗑️</button>";
-        html += "</div>";
-        html += "</div>";
-        html += "</div>";
+        
+        var precio = document.createElement('div');
+        precio.className = 'cart-item-price';
+        precio.textContent = '$' + item.subtotal.toFixed(2);
+        info.appendChild(precio);
+        
+        var actions = document.createElement('div');
+        actions.className = 'cart-item-actions';
+        
+        var btnMenos = document.createElement('button');
+        btnMenos.textContent = '−';
+        btnMenos.setAttribute('data-index', j);
+        btnMenos.onclick = function() {
+            changeItemQuantity(parseInt(this.getAttribute('data-index')), -1);
+        };
+        actions.appendChild(btnMenos);
+        
+        var cantidad = document.createElement('span');
+        cantidad.textContent = item.cantidad;
+        actions.appendChild(cantidad);
+        
+        var btnMas = document.createElement('button');
+        btnMas.textContent = '+';
+        btnMas.setAttribute('data-index', j);
+        btnMas.onclick = function() {
+            changeItemQuantity(parseInt(this.getAttribute('data-index')), 1);
+        };
+        actions.appendChild(btnMas);
+        
+        var btnEliminar = document.createElement('button');
+        btnEliminar.className = 'cart-item-remove';
+        btnEliminar.textContent = '🗑️';
+        btnEliminar.setAttribute('data-index', j);
+        btnEliminar.onclick = function() {
+            removeItem(parseInt(this.getAttribute('data-index')));
+        };
+        actions.appendChild(btnEliminar);
+        
+        info.appendChild(actions);
+        cartItem.appendChild(info);
+        itemsContainer.appendChild(cartItem);
     }
-    
-    itemsContainer.innerHTML = html;
     
     document.getElementById("cartSubtotal").textContent = "$" + subtotal.toFixed(2);
     document.getElementById("cartTotal").textContent = "$" + subtotal.toFixed(2);
@@ -969,20 +1185,24 @@ if (cart.length === 0) {
 }
 
 function changeItemQuantity(index, delta) {
-    cart[index].cantidad = Math.max(1, cart[index].cantidad + delta);
-    var precioUnitario = cart[index].precio + cart[index].extrasTotal;
-    cart[index].subtotal = precioUnitario * cart[index].cantidad;
+    if (index < 0 || index >= _cart.length) return;
+    
+    _cart[index].cantidad = Math.max(1, _cart[index].cantidad + delta);
+    var precioUnitario = _cart[index].precio + _cart[index].extrasTotal;
+    _cart[index].subtotal = precioUnitario * _cart[index].cantidad;
     saveCart();
     updateCartUI();
 }
 
 function removeItem(index) {
-    cart.splice(index, 1);
+    if (index < 0 || index >= _cart.length) return;
+    
+    _cart.splice(index, 1);
     saveCart();
     updateCartUI();
 }
 
-function toggleCart() {
+window.toggleCart = function() {
     var overlay = document.getElementById("cartOverlay");
     var sidebar = document.getElementById("cartSidebar");
     
@@ -993,46 +1213,46 @@ function toggleCart() {
         overlay.classList.add("show");
         sidebar.classList.add("show");
     }
-}
+};
 
 // ================================
 // CHECKOUT
 // ================================
-function abrirCheckout() {
-    if (cart.length === 0) return;
+window.abrirCheckout = function() {
+    if (_cart.length === 0) return;
     
-    if (!sessionData) {
-        pendingAction = "checkout";
-        toggleCart();
+    if (!_sessionData) {
+        _pendingAction = "checkout";
+        window.toggleCart();
         setTimeout(function() {
-            abrirModalAuth();
+            window.abrirModalAuth();
         }, 300);
         return;
     }
     
-    toggleCart();
+    window.toggleCart();
     
     setTimeout(function() {
         document.getElementById("modalCheckout").classList.add("show");
-        document.getElementById("checkoutTelefono").value = sessionData.telefono || "";
+        document.getElementById("checkoutTelefono").value = _sessionData.telefono || "";
         
-        selectTipoServicio(tipoServicio);
+        window.selectTipoServicio(_tipoServicio);
         cargarDireccionesCheckout();
         renderCheckoutItems();
     }, 300);
-}
+};
 
-function cerrarCheckout() {
+window.cerrarCheckout = function() {
     document.getElementById("modalCheckout").classList.remove("show");
-    cuponAplicado = null;
+    _cuponAplicado = null;
     document.getElementById("cuponAplicadoInfo").style.display = "none";
     document.getElementById("cuponInputWrapper").style.display = "flex";
     document.getElementById("inputCupon").value = "";
     document.getElementById("checkoutDescuentoRow").style.display = "none";
-}
+};
 
-function selectTipoServicio(tipo) {
-    tipoServicio = tipo;
+window.selectTipoServicio = function(tipo) {
+    _tipoServicio = tipo;
     
     var btns = document.querySelectorAll(".tipo-btn");
     for (var i = 0; i < btns.length; i++) {
@@ -1045,64 +1265,78 @@ function selectTipoServicio(tipo) {
     var seccionDir = document.getElementById("seccionDireccion");
     if (tipo === "Domicilio") {
         seccionDir.style.display = "block";
-        costoEnvio = 25;
+        _costoEnvio = 25;
     } else {
         seccionDir.style.display = "none";
-        costoEnvio = 0;
-        direccionSeleccionada = null;
+        _costoEnvio = 0;
+        _direccionSeleccionada = null;
     }
     
     actualizarTotalesCheckout();
-}
+};
 
 async function cargarDireccionesCheckout() {
-    if (!sessionData) return;
+    if (!_sessionData) return;
     
     var container = document.getElementById("direccionesGuardadas");
     container.innerHTML = "<div class='loading-mini'><span>Cargando...</span></div>";
     
-    const data = await callAPI('/api/direcciones/' + sessionData.id);
-    direccionesCliente = data;
+    const data = await callAPI('/api/direcciones/' + _sessionData.id);
+    _direccionesCliente = data || [];
     
-    if (direccionesCliente.length === 0) {
+    if (_direccionesCliente.length === 0) {
         container.innerHTML = "<div class='direcciones-empty'>No tienes direcciones guardadas</div>";
-        mostrarFormDireccion();
+        window.mostrarFormDireccion();
         return;
     }
     
-    var html = "";
-    for (var i = 0; i < direccionesCliente.length; i++) {
-        var d = direccionesCliente[i];
-        var selected = direccionSeleccionada && direccionSeleccionada.id === d.id ? "selected" : "";
+    container.innerHTML = '';
+    for (var i = 0; i < _direccionesCliente.length; i++) {
+        var d = _direccionesCliente[i];
+        var item = document.createElement('div');
+        item.className = 'direccion-item';
+        if (_direccionSeleccionada && _direccionSeleccionada.id === d.id) {
+            item.classList.add('selected');
+        }
+        item.setAttribute('data-index', i);
+        item.onclick = function() {
+            window.seleccionarDireccion(parseInt(this.getAttribute('data-index')));
+        };
         
-        html += "<div class='direccion-item " + selected + "' onclick='seleccionarDireccion(" + i + ")'>";
-        html += "<div class='direccion-radio'></div>";
-        html += "<div class='direccion-texto'>" + d.direccion + "</div>";
-        html += "</div>";
+        var radio = document.createElement('div');
+        radio.className = 'direccion-radio';
+        item.appendChild(radio);
+        
+        var texto = document.createElement('div');
+        texto.className = 'direccion-texto';
+        texto.textContent = d.direccion;
+        item.appendChild(texto);
+        
+        container.appendChild(item);
     }
     
-    container.innerHTML = html;
-    
-    if (!direccionSeleccionada && direccionesCliente.length > 0) {
-        seleccionarDireccion(0);
+    if (!_direccionSeleccionada && _direccionesCliente.length > 0) {
+        window.seleccionarDireccion(0);
     }
 }
 
-function seleccionarDireccion(index) {
-    direccionSeleccionada = direccionesCliente[index];
-    coordenadasEntrega = direccionSeleccionada.maps || "";
+window.seleccionarDireccion = function(index) {
+    if (index < 0 || index >= _direccionesCliente.length) return;
+    
+    _direccionSeleccionada = _direccionesCliente[index];
+    _coordenadasEntrega = _direccionSeleccionada.maps || "";
     
     var items = document.querySelectorAll("#direccionesGuardadas .direccion-item");
     for (var i = 0; i < items.length; i++) {
         items[i].classList.remove("selected");
     }
-    items[index].classList.add("selected");
+    if (items[index]) items[index].classList.add("selected");
     
     document.getElementById("nuevaDireccionForm").style.display = "none";
     document.getElementById("btnAgregarDir").style.display = "block";
-}
+};
 
-function mostrarFormDireccion() {
+window.mostrarFormDireccion = function() {
     document.getElementById("checkoutDireccion").value = "";
     document.getElementById("checkoutCoordenadas").value = "";
     document.getElementById("coordenadasInfo").style.display = "none";
@@ -1112,15 +1346,15 @@ function mostrarFormDireccion() {
     document.getElementById("nuevaDireccionForm").style.display = "block";
     document.getElementById("btnAgregarDir").style.display = "none";
     
-    direccionSeleccionada = null;
-}
+    _direccionSeleccionada = null;
+};
 
-function cancelarNuevaDireccion() {
+window.cancelarNuevaDireccion = function() {
     document.getElementById("nuevaDireccionForm").style.display = "none";
     document.getElementById("btnAgregarDir").style.display = "block";
-}
+};
 
-function obtenerUbicacion() {
+window.obtenerUbicacion = function() {
     if (!navigator.geolocation) {
         alert("Tu navegador no soporta geolocalización");
         return;
@@ -1135,8 +1369,8 @@ function obtenerUbicacion() {
         function(position) {
             var lat = position.coords.latitude;
             var lng = position.coords.longitude;
-            coordenadasEntrega = lat + "," + lng;
-            document.getElementById("checkoutCoordenadas").value = coordenadasEntrega;
+            _coordenadasEntrega = lat + "," + lng;
+            document.getElementById("checkoutCoordenadas").value = _coordenadasEntrega;
             document.getElementById("coordenadasInfo").style.display = "block";
             document.getElementById("ubicacionIcon").textContent = "✅";
             document.getElementById("ubicacionText").textContent = "Ubicación capturada";
@@ -1149,12 +1383,14 @@ function obtenerUbicacion() {
             alert("No se pudo obtener tu ubicación");
         }
     );
-}
+};
 
-async function guardarNuevaDireccion() {
+window.guardarNuevaDireccion = async function() {
     var dir = document.getElementById("checkoutDireccion").value.trim();
-    if (!dir) {
-        alert("Escribe una dirección");
+    dir = window._sanitizeHTML(dir).substring(0, 500);
+    
+    if (!dir || !window._validateInput.text(dir, 500)) {
+        alert("Escribe una dirección válida");
         return;
     }
     
@@ -1163,57 +1399,66 @@ async function guardarNuevaDireccion() {
     const data = await callAPI('/api/direcciones', {
         method: 'POST',
         body: JSON.stringify({
-            clienteId: sessionData.id,
+            clienteId: _sessionData.id,
             direccion: dir,
             maps: coords
         })
     });
     
     if (data.success) {
-        direccionSeleccionada = { id: data.id, direccion: dir, maps: coords };
-        coordenadasEntrega = coords;
+        _direccionSeleccionada = { id: data.id, direccion: dir, maps: coords };
+        _coordenadasEntrega = coords;
         cargarDireccionesCheckout();
         mostrarToast("Dirección guardada");
     } else {
         alert("Error al guardar");
     }
-}
+};
 
 function renderCheckoutItems() {
     var container = document.getElementById("checkoutItems");
-    var html = "";
+    container.innerHTML = '';
     
-    for (var i = 0; i < cart.length; i++) {
-        var item = cart[i];
-        html += "<div class='checkout-item'>";
-        html += "<span class='checkout-item-name'>" + item.nombre + "</span>";
-        html += "<span class='checkout-item-qty'>x" + item.cantidad + " = $" + item.subtotal.toFixed(2) + "</span>";
-        html += "</div>";
+    for (var i = 0; i < _cart.length; i++) {
+        var item = _cart[i];
+        var div = document.createElement('div');
+        div.className = 'checkout-item';
+        
+        var nombre = document.createElement('span');
+        nombre.className = 'checkout-item-name';
+        nombre.textContent = item.nombre;
+        div.appendChild(nombre);
+        
+        var qty = document.createElement('span');
+        qty.className = 'checkout-item-qty';
+        qty.textContent = 'x' + item.cantidad + ' = $' + item.subtotal.toFixed(2);
+        div.appendChild(qty);
+        
+        container.appendChild(div);
     }
     
-    container.innerHTML = html;
     actualizarTotalesCheckout();
 }
 
 function actualizarTotalesCheckout() {
     var subtotal = 0;
-    for (var i = 0; i < cart.length; i++) {
-        subtotal += cart[i].subtotal;
+    for (var i = 0; i < _cart.length; i++) {
+        subtotal += _cart[i].subtotal;
     }
     
     var descuento = 0;
-    if (cuponAplicado) {
-        descuento = Math.round(subtotal * (cuponAplicado.descuento / 100));
+    if (_cuponAplicado) {
+        descuento = Math.round(subtotal * (_cuponAplicado.descuento / 100));
     }
     
-    var total = subtotal + costoEnvio - descuento;
+    var total = subtotal + _costoEnvio - descuento;
     
     document.getElementById("checkoutSubtotal").textContent = "$" + subtotal.toFixed(2);
     
     var envioRow = document.getElementById("checkoutEnvioRow");
-    if (tipoServicio === "Domicilio") {
+    if (_tipoServicio === "Domicilio") {
         envioRow.style.display = "flex";
-        document.getElementById("checkoutEnvio").textContent = "$" + costoEnvio.toFixed(2);
+        document.getElementById("checkoutEnvio").textContent = "$" + _costoEnvio.toFixed(2);
     } else {
         envioRow.style.display = "none";
     }
@@ -1233,17 +1478,21 @@ function actualizarTotalesCheckout() {
 // CUPONES
 // ================================
 async function verificarCuponAutomatico() {
-    if (!sessionData) return;
+    if (!_sessionData) return;
     
-    const data = await callAPI('/api/cupones/automatico?clienteId=' + sessionData.id);
+    const data = await callAPI('/api/cupones/automatico?clienteId=' + _sessionData.id);
     
     if (!data || !data.id) return;
     
-    cuponAutomaticoData = data;
+    _cuponAutomaticoData = data;
     
     var imgContainer = document.getElementById("cuponImagen");
+    imgContainer.innerHTML = '';
     if (data.imagen) {
-        imgContainer.innerHTML = "<img src='" + data.imagen + "' alt=''>";
+        var img = document.createElement('img');
+        img.src = data.imagen;
+        img.alt = '';
+        imgContainer.appendChild(img);
     } else {
         imgContainer.style.display = "none";
     }
@@ -1261,34 +1510,36 @@ async function verificarCuponAutomatico() {
     document.getElementById("modalCupon").classList.add("show");
 }
 
-function cerrarModalCupon() {
+window.cerrarModalCupon = function() {
     document.getElementById("modalCupon").classList.remove("show");
-    cuponAutomaticoData = null;
-}
+    _cuponAutomaticoData = null;
+};
 
-function aplicarCuponAutomatico() {
-    if (!cuponAutomaticoData) return;
+window.aplicarCuponAutomatico = function() {
+    if (!_cuponAutomaticoData) return;
     
-    cuponAplicado = {
-        id: cuponAutomaticoData.id,
-        nombre: cuponAutomaticoData.nombre,
-        descuento: cuponAutomaticoData.descuento,
-        codigo: cuponAutomaticoData.codigo
+    _cuponAplicado = {
+        id: _cuponAutomaticoData.id,
+        nombre: _cuponAutomaticoData.nombre,
+        descuento: _cuponAutomaticoData.descuento,
+        codigo: _cuponAutomaticoData.codigo
     };
     
-    cerrarModalCupon();
+    window.cerrarModalCupon();
     mostrarToast("¡Cupón aplicado!");
-}
+};
 
-async function validarCuponManual() {
+window.validarCuponManual = async function() {
     var codigo = document.getElementById("inputCupon").value.trim().toUpperCase();
-    if (!codigo) {
-        document.getElementById("cuponError").textContent = "Ingresa un código";
+    codigo = window._sanitizeHTML(codigo).substring(0, 50);
+    
+    if (!codigo || !window._validateInput.text(codigo, 50)) {
+        document.getElementById("cuponError").textContent = "Ingresa un código válido";
         document.getElementById("cuponError").style.display = "block";
         return;
     }
     
-    if (!sessionData) {
+    if (!_sessionData) {
         document.getElementById("cuponError").textContent = "Debes iniciar sesión";
         document.getElementById("cuponError").style.display = "block";
         return;
@@ -1302,7 +1553,7 @@ async function validarCuponManual() {
         method: 'POST',
         body: JSON.stringify({
             codigo: codigo,
-            clienteId: sessionData.id
+            clienteId: _sessionData.id
         })
     });
     
@@ -1310,10 +1561,10 @@ async function validarCuponManual() {
     btn.textContent = "Aplicar";
     
     if (data.success && data.cupon) {
-        cuponAplicado = data.cupon;
+        _cuponAplicado = data.cupon;
         
-        document.getElementById("checkoutCuponNombre").textContent = cuponAplicado.codigo;
-        document.getElementById("checkoutCuponDescuento").textContent = "-" + cuponAplicado.descuento + "%";
+        document.getElementById("checkoutCuponNombre").textContent = _cuponAplicado.codigo;
+        document.getElementById("checkoutCuponDescuento").textContent = "-" + _cuponAplicado.descuento + "%";
         document.getElementById("cuponAplicadoInfo").style.display = "flex";
         document.getElementById("cuponInputWrapper").style.display = "none";
         document.getElementById("cuponError").style.display = "none";
@@ -1324,30 +1575,30 @@ async function validarCuponManual() {
         document.getElementById("cuponError").textContent = data.mensaje || "Cupón no válido";
         document.getElementById("cuponError").style.display = "block";
     }
-}
+};
 
-function quitarCupon() {
-    cuponAplicado = null;
+window.quitarCupon = function() {
+    _cuponAplicado = null;
     document.getElementById("cuponAplicadoInfo").style.display = "none";
     document.getElementById("cuponInputWrapper").style.display = "flex";
     document.getElementById("inputCupon").value = "";
     actualizarTotalesCheckout();
-}
+};
 
 // ================================
 // CONFIRMAR PEDIDO
 // ================================
-async function confirmarPedido() {
-    if (cart.length === 0) return;
+window.confirmarPedido = async function() {
+    if (_cart.length === 0) return;
     
     var telefono = document.getElementById("checkoutTelefono").value.trim();
-    if (!telefono) {
-        alert("Ingresa tu teléfono");
+    if (!window._validateInput.phone(telefono)) {
+        alert("Ingresa un teléfono válido de 10 dígitos");
         return;
     }
     
-    if (tipoServicio === "Domicilio") {
-        if (!direccionSeleccionada) {
+    if (_tipoServicio === "Domicilio") {
+        if (!_direccionSeleccionada) {
             var dirManual = document.getElementById("checkoutDireccion").value.trim();
             if (!dirManual) {
                 alert("Selecciona o ingresa una dirección");
@@ -1361,8 +1612,8 @@ async function confirmarPedido() {
     btn.textContent = "Enviando...";
     
     var productos = [];
-    for (var i = 0; i < cart.length; i++) {
-        var item = cart[i];
+    for (var i = 0; i < _cart.length; i++) {
+        var item = _cart[i];
         productos.push({
             productoId: item.productoId,
             nombre: item.nombre,
@@ -1376,17 +1627,20 @@ async function confirmarPedido() {
         });
     }
     
+    var observaciones = document.getElementById("checkoutObservaciones").value.trim();
+    observaciones = window._sanitizeHTML(observaciones).substring(0, 500);
+    
     var datosPedido = {
-        clienteId: sessionData.id,
-        nombreCliente: sessionData.nombre,
+        clienteId: _sessionData.id,
+        nombreCliente: _sessionData.nombre,
         telefono: telefono,
-        direccion: direccionSeleccionada ? direccionSeleccionada.direccion : document.getElementById("checkoutDireccion").value.trim(),
-        tipoServicio: tipoServicio,
-        costoEnvio: costoEnvio,
-        coordenadas: coordenadasEntrega,
-        observaciones: document.getElementById("checkoutObservaciones").value.trim(),
+        direccion: _direccionSeleccionada ? _direccionSeleccionada.direccion : document.getElementById("checkoutDireccion").value.trim(),
+        tipoServicio: _tipoServicio,
+        costoEnvio: _costoEnvio,
+        coordenadas: _coordenadasEntrega,
+        observaciones: observaciones,
         productos: productos,
-        cupon: cuponAplicado
+        cupon: _cuponAplicado
     };
     
     const data = await callAPI('/api/pedidos', {
@@ -1398,55 +1652,55 @@ async function confirmarPedido() {
     btn.textContent = "✓ Confirmar Pedido";
     
     if (data.success && data.folio) {
-        cart = [];
+        _cart = [];
         saveCart();
         updateCartUI();
-        cerrarCheckout();
+        window.cerrarCheckout();
         
         document.getElementById("exitoFolio").textContent = data.folio;
         document.getElementById("modalExito").classList.add("show");
         
-        cuponAplicado = null;
+        _cuponAplicado = null;
     } else {
         alert(data.mensaje || "Error al confirmar");
     }
-}
+};
 
-function cerrarExito() {
+window.cerrarExito = function() {
     document.getElementById("modalExito").classList.remove("show");
-    navegar("pedidos");
-}
+    window.navegar("pedidos");
+};
 
 // ================================
 // PEDIDOS
 // ================================
 async function cargarPedidos() {
-    if (!sessionData) {
-        document.getElementById("pedidosList").innerHTML = "<div class='empty-state'><div class='empty-icon'>📦</div><h3>Inicia sesión</h3><p>Debes iniciar sesión para ver tus pedidos</p><button class='btn-comenzar' onclick='abrirModalAuth()'>Iniciar Sesión</button></div>";
+    if (!_sessionData) {
+        document.getElementById("pedidosList").innerHTML = "<div class='empty-state'><div class='empty-icon'>📦</div><h3>Inicia sesión</h3><p>Debes iniciar sesión para ver tus pedidos</p><button class='btn-comenzar' onclick='window.abrirModalAuth()'>Iniciar Sesión</button></div>";
         return;
     }
     
     document.getElementById("pedidosList").innerHTML = "<div class='loading'><div class='spinner'></div><p>Cargando...</p></div>";
     
-    const data = await callAPI('/api/pedidos/' + sessionData.id);
-    pedidosCache = {};
+    const data = await callAPI('/api/pedidos/' + _sessionData.id);
+    _pedidosCache = {};
     
     if (!data || data.length === 0) {
-        document.getElementById("pedidosList").innerHTML = "<div class='empty-state'><div class='empty-icon'>📦</div><h3>No hay pedidos</h3><p>Aún no has realizado ningún pedido</p><button class='btn-comenzar' onclick='navegar(\"menu\")'>Comenzar a Pedir</button></div>";
+        document.getElementById("pedidosList").innerHTML = "<div class='empty-state'><div class='empty-icon'>📦</div><h3>No hay pedidos</h3><p>Aún no has realizado ningún pedido</p><button class='btn-comenzar' onclick='window.mostrarSeccion(\"menu\")'>Comenzar a Pedir</button></div>";
         return;
     }
     
-    var html = "";
+    var html = '';
     for (var i = 0; i < data.length; i++) {
         var p = data[i];
-        pedidosCache[p.folio] = p;
+        _pedidosCache[p.folio] = p;
         html += renderPedidoCard(p);
     }
     
     document.getElementById("pedidosList").innerHTML = html;
     
-    if (pedidosInterval) clearInterval(pedidosInterval);
-    pedidosInterval = setInterval(actualizarPedidosEnTiempoReal, 15000);
+    if (_pedidosInterval) clearInterval(_pedidosInterval);
+    _pedidosInterval = setInterval(actualizarPedidosEnTiempoReal, 15000);
 }
 
 function renderPedidoCard(pedido) {
@@ -1462,7 +1716,7 @@ function renderPedidoCard(pedido) {
     
     var html = "<div class='pedido-card'>";
     html += "<div class='pedido-header'>";
-    html += "<div><div class='pedido-folio'>" + pedido.folio + "</div><div class='pedido-fecha'>" + fechaStr + " • " + (pedido.hora || "") + "</div></div>";
+    html += "<div><div class='pedido-folio'>" + window._escapeHTML(pedido.folio) + "</div><div class='pedido-fecha'>" + fechaStr + " • " + (pedido.hora || "") + "</div></div>";
     html += "<div class='pedido-tipo-badge " + tipoBadgeClass + "'>" + (pedido.tipoServicio === "Domicilio" ? "🏠 Domicilio" : "🏪 Recoger") + "</div>";
     html += "</div>";
     
@@ -1473,9 +1727,9 @@ function renderPedidoCard(pedido) {
     html += "<div class='pedido-items'>";
     for (var j = 0; j < pedido.productos.length; j++) {
         var prod = pedido.productos[j];
-        html += "<div class='pedido-item'>" + prod.cantidad + "x " + prod.nombre;
+        html += "<div class='pedido-item'>" + prod.cantidad + "x " + window._escapeHTML(prod.nombre);
         if (prod.extras) {
-            html += " <span class='pedido-extras'>+ " + prod.extras + "</span>";
+            html += " <span class='pedido-extras'>+ " + window._escapeHTML(prod.extras) + "</span>";
         }
         html += "</div>";
     }
@@ -1499,13 +1753,8 @@ function renderDeliveryTrack(estado) {
         { id: "Entregado", icon: "✅", label: "Entregado" }
     ];
     
-    var currentIndex = 0;
-    for (var i = 0; i < steps.length; i++) {
-        if (steps[i].id === estado) {
-            currentIndex = i;
-            break;
-        }
-    }
+    var currentIndex = steps.findIndex(s => s.id === estado);
+    if (currentIndex === -1) currentIndex = 0;
     
     var html = "<div class='pedido-delivery'><div class='delivery-track'>";
     
@@ -1530,21 +1779,21 @@ function renderDeliveryTrack(estado) {
 }
 
 async function actualizarPedidosEnTiempoReal() {
-    if (!sessionData || document.getElementById("seccionPedidos").style.display === "none") return;
+    if (!_sessionData || document.getElementById("seccionPedidos").style.display === "none") return;
     
-    const data = await callAPI('/api/pedidos/' + sessionData.id);
+    const data = await callAPI('/api/pedidos/' + _sessionData.id);
     
     if (!data || data.length === 0) return;
     
     for (var i = 0; i < data.length; i++) {
         var pedido = data[i];
-        var anterior = pedidosCache[pedido.folio];
+        var anterior = _pedidosCache[pedido.folio];
         
         if (anterior && anterior.estadoDelivery !== pedido.estadoDelivery) {
             mostrarToast("📦 Actualización: " + pedido.folio + " - " + pedido.estadoDelivery);
         }
         
-        pedidosCache[pedido.folio] = pedido;
+        _pedidosCache[pedido.folio] = pedido;
     }
     
     var html = "";
@@ -1557,18 +1806,18 @@ async function actualizarPedidosEnTiempoReal() {
 // ================================
 // AUTH - LOGIN/REGISTRO
 // ================================
-function abrirModalAuth() {
+window.abrirModalAuth = function() {
     document.getElementById("modalAuth").classList.add("show");
     document.body.style.overflow = "hidden";
-    mostrarTabAuth("login");
-}
+    window.mostrarTabAuth("login");
+};
 
-function cerrarModalAuth() {
+window.cerrarModalAuth = function() {
     document.getElementById("modalAuth").classList.remove("show");
     document.body.style.overflow = "";
-}
+};
 
-function mostrarTabAuth(tab) {
+window.mostrarTabAuth = function(tab) {
     if (tab === "login") {
         document.getElementById("formLogin").style.display = "block";
         document.getElementById("formRegistro").style.display = "none";
@@ -1580,9 +1829,9 @@ function mostrarTabAuth(tab) {
         document.querySelectorAll(".auth-tab")[0].classList.remove("active");
         document.querySelectorAll(".auth-tab")[1].classList.add("active");
     }
-}
+};
 
-function togglePassword(inputId, iconId) {
+window.togglePassword = function(inputId, iconId) {
     var input = document.getElementById(inputId);
     var icon = document.getElementById(iconId);
     
@@ -1593,13 +1842,27 @@ function togglePassword(inputId, iconId) {
         input.type = "password";
         icon.textContent = "👁️";
     }
-}
+};
 
-async function handleLogin(e) {
+window.handleLogin = async function(e) {
     e.preventDefault();
     
     var correo = document.getElementById("loginCorreo").value.trim();
     var contrasena = document.getElementById("loginContrasena").value;
+    
+    if (!window._validateInput.email(correo)) {
+        document.getElementById("alertLogin").className = "alert alert-error";
+        document.getElementById("alertLogin").textContent = "Correo inválido";
+        document.getElementById("alertLogin").style.display = "block";
+        return false;
+    }
+    
+    if (!contrasena || contrasena.length < 4) {
+        document.getElementById("alertLogin").className = "alert alert-error";
+        document.getElementById("alertLogin").textContent = "Contraseña muy corta";
+        document.getElementById("alertLogin").style.display = "block";
+        return false;
+    }
     
     var btn = document.getElementById("btnLogin");
     btn.classList.add("loading");
@@ -1616,18 +1879,18 @@ async function handleLogin(e) {
     btn.disabled = false;
     
     if (data.success && data.cliente) {
-        sessionData = data.cliente;
-        localStorage.setItem("uniline_session", data.sessionId);
-        localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
+        _sessionData = Object.freeze(data.cliente);
+        window._secureStorage.set("uniline_session", data.sessionId);
+        window._secureStorage.set("uniline_cliente", data.cliente);
         
         actualizarUIUsuario();
-        cerrarModalAuth();
-        mostrarToast("¡Bienvenido " + sessionData.nombre + "!");
+        window.cerrarModalAuth();
+        mostrarToast("¡Bienvenido " + _sessionData.nombre + "!");
         
-        if (pendingAction === "checkout") {
-            pendingAction = null;
+        if (_pendingAction === "checkout") {
+            _pendingAction = null;
             setTimeout(function() {
-                abrirCheckout();
+                window.abrirCheckout();
             }, 500);
         }
     } else {
@@ -1638,9 +1901,9 @@ async function handleLogin(e) {
     }
     
     return false;
-}
+};
 
-async function handleRegistro(e) {
+window.handleRegistro = async function(e) {
     e.preventDefault();
     
     var nombre = document.getElementById("regNombre").value.trim();
@@ -1649,12 +1912,46 @@ async function handleRegistro(e) {
     var contrasena = document.getElementById("regContrasena").value;
     var contrasena2 = document.getElementById("regContrasena2").value;
     
+    nombre = window._sanitizeHTML(nombre).substring(0, 255);
+    
     document.getElementById("alertRegistro").style.display = "none";
+    
+    if (!window._validateInput.text(nombre, 255) || nombre.length < 3) {
+        var alert = document.getElementById("alertRegistro");
+        alert.className = "alert alert-error";
+        alert.textContent = "Nombre muy corto";
+        alert.style.display = "block";
+        return false;
+    }
+    
+    if (!window._validateInput.phone(telefono)) {
+        var alert = document.getElementById("alertRegistro");
+        alert.className = "alert alert-error";
+        alert.textContent = "Teléfono inválido (10 dígitos)";
+        alert.style.display = "block";
+        return false;
+    }
+    
+    if (!window._validateInput.email(correo)) {
+        var alert = document.getElementById("alertRegistro");
+        alert.className = "alert alert-error";
+        alert.textContent = "Correo inválido";
+        alert.style.display = "block";
+        return false;
+    }
     
     if (contrasena !== contrasena2) {
         var alert = document.getElementById("alertRegistro");
         alert.className = "alert alert-error";
         alert.textContent = "Las contraseñas no coinciden";
+        alert.style.display = "block";
+        return false;
+    }
+    
+    if (contrasena.length < 4) {
+        var alert = document.getElementById("alertRegistro");
+        alert.className = "alert alert-error";
+        alert.textContent = "La contraseña debe tener al menos 4 caracteres";
         alert.style.display = "block";
         return false;
     }
@@ -1676,27 +1973,27 @@ async function handleRegistro(e) {
     btn.classList.remove("loading");
     btn.disabled = false;
     
-  if (data.success && data.cliente) {
-    // Validar datos antes de guardar
-    if (!data.cliente.id || !data.cliente.nombre || !data.cliente.correo) {
-        var alert = document.getElementById("alertRegistro");
-        alert.className = "alert alert-error";
-        alert.textContent = "Error: Datos de registro inválidos";
-        alert.style.display = "block";
-        return false;
-    }
-    
-    sessionData = data.cliente;
-    localStorage.setItem("uniline_session", data.sessionId);
-    localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
-        actualizarUIUsuario();
-        cerrarModalAuth();
-        mostrarToast("¡Cuenta creada! Bienvenido " + sessionData.nombre);
+    if (data.success && data.cliente) {
+        if (!data.cliente.id || !data.cliente.nombre || !data.cliente.correo) {
+            var alert = document.getElementById("alertRegistro");
+            alert.className = "alert alert-error";
+            alert.textContent = "Error: Datos de registro inválidos";
+            alert.style.display = "block";
+            return false;
+        }
         
-        if (pendingAction === "checkout") {
-            pendingAction = null;
+        _sessionData = Object.freeze(data.cliente);
+        window._secureStorage.set("uniline_session", data.sessionId);
+        window._secureStorage.set("uniline_cliente", data.cliente);
+        
+        actualizarUIUsuario();
+        window.cerrarModalAuth();
+        mostrarToast("¡Cuenta creada! Bienvenido " + _sessionData.nombre);
+        
+        if (_pendingAction === "checkout") {
+            _pendingAction = null;
             setTimeout(function() {
-                abrirCheckout();
+                window.abrirCheckout();
             }, 500);
         }
     } else {
@@ -1707,47 +2004,45 @@ async function handleRegistro(e) {
     }
     
     return false;
-}
+};
 
-function logout() {
+window.logout = function() {
     if (confirm("¿Cerrar sesión?")) {
-        sessionData = null;
-        localStorage.removeItem("uniline_session");
-        localStorage.removeItem("uniline_cliente");
+        _sessionData = null;
+        window._secureStorage.remove("uniline_session");
+        window._secureStorage.remove("uniline_cliente");
         actualizarUIUsuario();
         
-        // Cerrar menú
         var menu = document.getElementById("userMenu");
         if (menu) {
             menu.classList.remove("show");
         }
         
         mostrarToast("Sesión cerrada");
-        mostrarSeccion("menu");
+        window.mostrarSeccion("menu");
     }
-}
+};
 
 // ================================
 // CUENTA Y DIRECCIONES
 // ================================
-function toggleUserMenu() {
+window.toggleUserMenu = function() {
     var menu = document.getElementById("userMenu");
     menu.classList.toggle("show");
-}
+};
 
-function navegar(seccion) {
+window.navegar = function(seccion) {
     if (seccion === "cuenta") {
-        if (!sessionData) {
-            abrirModalAuth();
+        if (!_sessionData) {
+            window.abrirModalAuth();
             return;
         }
-        abrirModalCuenta();
+        window.abrirModalCuenta();
         return;
     }
     
-    mostrarSeccion(seccion);
+    window.mostrarSeccion(seccion);
     
-    // Solo actualizar active si viene del footer
     if (window.event && window.event.target) {
         var items = document.querySelectorAll(".footer-item");
         for (var i = 0; i < items.length; i++) {
@@ -1758,9 +2053,9 @@ function navegar(seccion) {
             footerItem.classList.add("active");
         }
     }
-}
+};
 
-function mostrarSeccion(seccion) {
+window.mostrarSeccion = function(seccion) {
     document.getElementById("seccionMenu").style.display = "none";
     document.getElementById("seccionPedidos").style.display = "none";
     
@@ -1772,70 +2067,75 @@ function mostrarSeccion(seccion) {
     }
     
     window.scrollTo(0, 0);
-}
+};
 
-function abrirModalCuenta() {
-    if (!sessionData) return;
+window.abrirModalCuenta = function() {
+    if (!_sessionData) return;
     
-    document.getElementById("cuentaAvatar").textContent = sessionData.nombre.charAt(0).toUpperCase();
-    document.getElementById("cuentaNombre").textContent = sessionData.nombre;
-    document.getElementById("cuentaCorreo").textContent = sessionData.correo;
-    document.getElementById("cuentaPuntos").textContent = sessionData.puntos || 0;
+    document.getElementById("cuentaAvatar").textContent = window._escapeHTML(_sessionData.nombre.charAt(0).toUpperCase());
+    document.getElementById("cuentaNombre").textContent = window._escapeHTML(_sessionData.nombre);
+    document.getElementById("cuentaCorreo").textContent = window._escapeHTML(_sessionData.correo);
+    document.getElementById("cuentaPuntos").textContent = _sessionData.puntos || 0;
     
     document.getElementById("modalCuenta").classList.add("show");
     document.body.style.overflow = "hidden";
-}
+};
 
-function cerrarCuenta() {
+window.cerrarCuenta = function() {
     document.getElementById("modalCuenta").classList.remove("show");
     document.body.style.overflow = "";
-}
+};
 
-function editarPerfil() {
-    cerrarCuenta();
+window.editarPerfil = function() {
+    window.cerrarCuenta();
     
-    // Pre-llenar datos
-    document.getElementById("editNombre").value = sessionData.nombre;
-    document.getElementById("editTelefono").value = sessionData.telefono;
-    document.getElementById("editCorreo").value = sessionData.correo;
+    document.getElementById("editNombre").value = _sessionData.nombre;
+    document.getElementById("editTelefono").value = _sessionData.telefono;
+    document.getElementById("editCorreo").value = _sessionData.correo;
     document.getElementById("editContrasena").value = "";
     document.getElementById("editContrasena2").value = "";
     
-    // Limpiar alertas
     document.getElementById("alertEditarPerfil").style.display = "none";
     
-    // Abrir modal
     document.getElementById("modalEditarPerfil").classList.add("show");
     document.body.style.overflow = "hidden";
-}
+};
 
-function cerrarEditarPerfil() {
+window.cerrarEditarPerfil = function() {
     document.getElementById("modalEditarPerfil").classList.remove("show");
     document.body.style.overflow = "";
-}
+};
 
-// ================================
-// EDITAR PERFIL - ARCHIVO SEPARADO
-// ================================
-
-async function handleEditarPerfil(e) {
+window.handleEditarPerfil = async function(e) {
     e.preventDefault();
-    
-    console.log("=== INICIO handleEditarPerfil ===");
     
     var nombre = document.getElementById("editNombre").value.trim();
     var telefono = document.getElementById("editTelefono").value.trim();
     var contrasena = document.getElementById("editContrasena").value;
     var contrasena2 = document.getElementById("editContrasena2").value;
     
-    console.log("Datos del formulario:", { nombre, telefono, contrasena: contrasena ? "***" : "(vacío)" });
-    console.log("sessionData ANTES:", sessionData);
+    nombre = window._sanitizeHTML(nombre).substring(0, 255);
     
     document.getElementById("alertEditarPerfil").style.display = "none";
     
+    if (!window._validateInput.text(nombre, 255) || nombre.length < 3) {
+        var alert = document.getElementById("alertEditarPerfil");
+        alert.className = "alert alert-error";
+        alert.textContent = "Nombre muy corto";
+        alert.style.display = "block";
+        return false;
+    }
+    
+    if (!window._validateInput.phone(telefono)) {
+        var alert = document.getElementById("alertEditarPerfil");
+        alert.className = "alert alert-error";
+        alert.textContent = "Teléfono inválido";
+        alert.style.display = "block";
+        return false;
+    }
+    
     if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
         if (contrasena.trim() !== contrasena2.trim()) {
-            console.log("ERROR: Contraseñas no coinciden");
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = "Las contraseñas no coinciden";
@@ -1843,7 +2143,6 @@ async function handleEditarPerfil(e) {
             return false;
         }
         if (contrasena.length < 4) {
-            console.log("ERROR: Contraseña muy corta");
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = "La contraseña debe tener al menos 4 caracteres";
@@ -1865,113 +2164,148 @@ async function handleEditarPerfil(e) {
         datosActualizar.contrasena = contrasena.trim();
     }
     
-    console.log("Datos a enviar:", datosActualizar);
-    
     try {
-        const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
+        const data = await callAPI('/api/auth/perfil/' + _sessionData.id, {
             method: 'PUT',
             body: JSON.stringify(datosActualizar)
         });
-        
-        console.log("Respuesta del servidor:", data);
         
         btn.classList.remove("loading");
         btn.disabled = false;
         
         if (data.success && data.cliente) {
-            console.log("✅ Actualización exitosa");
-            
-            sessionData = {
+            _sessionData = Object.freeze({
                 id: data.cliente.id,
                 nombre: data.cliente.nombre,
                 telefono: data.cliente.telefono,
                 correo: data.cliente.correo,
                 direccion: data.cliente.direccion || "",
                 puntos: data.cliente.puntos || 0
-            };
+            });
             
-            console.log("sessionData DESPUÉS:", sessionData);
-            
-            localStorage.setItem("uniline_cliente", JSON.stringify(sessionData));
+            window._secureStorage.set("uniline_cliente", _sessionData);
             
             actualizarUIUsuario();
-            
-            cerrarEditarPerfil();
+            window.cerrarEditarPerfil();
             mostrarToast("✅ Perfil actualizado correctamente");
-            
-            console.log("=== FIN (ÉXITO) ===");
         } else {
-            console.log("❌ Error:", data.mensaje);
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = data.mensaje || "Error al actualizar";
             alert.style.display = "block";
         }
     } catch (error) {
-        console.error("❌ ERROR:", error);
         btn.classList.remove("loading");
         btn.disabled = false;
     }
     
     return false;
-}
+};
 
-async function verDirecciones() {
-    if (!sessionData) return;
+window.verDirecciones = async function() {
+    if (!_sessionData) return;
     
-    cerrarCuenta();
+    window.cerrarCuenta();
     
     document.getElementById("modalDirecciones").classList.add("show");
     document.body.style.overflow = "hidden";
     
     await cargarDirecciones();
-}
+};
 
-function cerrarModalDirecciones() {
+window.cerrarModalDirecciones = function() {
     document.getElementById("modalDirecciones").classList.remove("show");
     document.body.style.overflow = "";
-    cancelarFormDireccion();
-}
+    window.cancelarFormDireccion();
+};
 
 async function cargarDirecciones() {
     var lista = document.getElementById("direccionesLista");
     lista.innerHTML = "<div class='loading-mini'><span>Cargando...</span></div>";
     
-    const data = await callAPI('/api/direcciones/' + sessionData.id);
+    const data = await callAPI('/api/direcciones/' + _sessionData.id);
     
     if (!data || data.length === 0) {
         lista.innerHTML = "<div class='direcciones-vacio'><div class='direcciones-vacio-icon'>📍</div><p>No tienes direcciones guardadas</p></div>";
-        mostrarFormNuevaDireccion();
+        window.mostrarFormNuevaDireccion();
         return;
     }
     
-    var html = "";
+    lista.innerHTML = '';
     for (var i = 0; i < data.length; i++) {
         var d = data[i];
-        html += "<div class='direccion-card'>";
-        html += "<div class='direccion-card-content'>";
-        html += "<div class='direccion-card-icon'>📍</div>";
-        html += "<div class='direccion-card-info'>";
-        html += "<div class='direccion-card-text'>" + d.direccion + "</div>";
+        var card = document.createElement('div');
+        card.className = 'direccion-card';
+        
+        var content = document.createElement('div');
+        content.className = 'direccion-card-content';
+        
+        var icon = document.createElement('div');
+        icon.className = 'direccion-card-icon';
+        icon.textContent = '📍';
+        content.appendChild(icon);
+        
+        var info = document.createElement('div');
+        info.className = 'direccion-card-info';
+        
+        var texto = document.createElement('div');
+        texto.className = 'direccion-card-text';
+        texto.textContent = d.direccion;
+        info.appendChild(texto);
+        
         if (d.maps) {
-            html += "<div class='direccion-card-gps'>✓ Con ubicación GPS</div>";
+            var gps = document.createElement('div');
+            gps.className = 'direccion-card-gps';
+            gps.textContent = '✓ Con ubicación GPS';
+            info.appendChild(gps);
         }
-        html += "</div>";
-        html += "</div>";
-        html += "<div class='direccion-card-actions'>";
-        html += "<button class='btn-dir-action btn-dir-editar' onclick='editarDireccion(" + d.id + ", \"" + d.direccion.replace(/"/g, "&quot;") + "\", \"" + (d.maps || "") + "\")'>✏️ Editar</button>";
+        
+        content.appendChild(info);
+        card.appendChild(content);
+        
+        var actions = document.createElement('div');
+        actions.className = 'direccion-card-actions';
+        
+        var btnEditar = document.createElement('button');
+        btnEditar.className = 'btn-dir-action btn-dir-editar';
+        btnEditar.textContent = '✏️ Editar';
+        btnEditar.setAttribute('data-id', d.id);
+        btnEditar.setAttribute('data-direccion', d.direccion);
+        btnEditar.setAttribute('data-maps', d.maps || '');
+        btnEditar.onclick = function() {
+            window.editarDireccion(
+                this.getAttribute('data-id'),
+                this.getAttribute('data-direccion'),
+                this.getAttribute('data-maps')
+            );
+        };
+        actions.appendChild(btnEditar);
+        
         if (d.maps) {
-            html += "<button class='btn-dir-action btn-dir-maps' onclick='window.open(\"https://www.google.com/maps?q=" + d.maps + "\", \"_blank\")'>🗺️ Ver</button>";
+            var btnMaps = document.createElement('button');
+            btnMaps.className = 'btn-dir-action btn-dir-maps';
+            btnMaps.textContent = '🗺️ Ver';
+            btnMaps.onclick = function() {
+                window.open("https://www.google.com/maps?q=" + d.maps, "_blank");
+            };
+            actions.appendChild(btnMaps);
         }
-        html += "<button class='btn-dir-action btn-dir-eliminar' onclick='eliminarDireccion(" + d.id + ")'>🗑️</button>";
-        html += "</div>";
-        html += "</div>";
+        
+        var btnEliminar = document.createElement('button');
+        btnEliminar.className = 'btn-dir-action btn-dir-eliminar';
+        btnEliminar.textContent = '🗑️';
+        btnEliminar.setAttribute('data-id', d.id);
+        btnEliminar.onclick = function() {
+            window.eliminarDireccion(this.getAttribute('data-id'));
+        };
+        actions.appendChild(btnEliminar);
+        
+        card.appendChild(actions);
+        lista.appendChild(card);
     }
-    
-    lista.innerHTML = html;
 }
 
-function mostrarFormNuevaDireccion() {
+window.mostrarFormNuevaDireccion = function() {
     document.getElementById("direccionEditId").value = "";
     document.getElementById("direccionFormTitulo").textContent = "Nueva Dirección";
     document.getElementById("direccionInput").value = "";
@@ -1982,9 +2316,9 @@ function mostrarFormNuevaDireccion() {
     
     document.getElementById("direccionForm").style.display = "block";
     document.getElementById("modalDirFooter").style.display = "none";
-}
+};
 
-function editarDireccion(id, direccion, maps) {
+window.editarDireccion = function(id, direccion, maps) {
     document.getElementById("direccionEditId").value = id;
     document.getElementById("direccionFormTitulo").textContent = "Editar Dirección";
     document.getElementById("direccionInput").value = direccion;
@@ -2002,14 +2336,14 @@ function editarDireccion(id, direccion, maps) {
     
     document.getElementById("direccionForm").style.display = "block";
     document.getElementById("modalDirFooter").style.display = "none";
-}
+};
 
-function cancelarFormDireccion() {
+window.cancelarFormDireccion = function() {
     document.getElementById("direccionForm").style.display = "none";
     document.getElementById("modalDirFooter").style.display = "block";
-}
+};
 
-function obtenerUbicacionDireccion() {
+window.obtenerUbicacionDireccion = function() {
     if (!navigator.geolocation) {
         alert("Tu navegador no soporta geolocalización");
         return;
@@ -2036,12 +2370,14 @@ function obtenerUbicacionDireccion() {
             alert("No se pudo obtener tu ubicación");
         }
     );
-}
+};
 
-async function guardarDireccion() {
+window.guardarDireccion = async function() {
     var dir = document.getElementById("direccionInput").value.trim();
-    if (!dir) {
-        alert("Escribe una dirección");
+    dir = window._sanitizeHTML(dir).substring(0, 500);
+    
+    if (!dir || !window._validateInput.text(dir, 500)) {
+        alert("Escribe una dirección válida");
         return;
     }
     
@@ -2063,7 +2399,7 @@ async function guardarDireccion() {
         data = await callAPI('/api/direcciones', {
             method: 'POST',
             body: JSON.stringify({
-                clienteId: sessionData.id,
+                clienteId: _sessionData.id,
                 direccion: dir,
                 maps: maps
             })
@@ -2074,15 +2410,15 @@ async function guardarDireccion() {
     btn.textContent = "Guardar";
     
     if (data.success) {
-        cancelarFormDireccion();
+        window.cancelarFormDireccion();
         cargarDirecciones();
         mostrarToast(editId ? "Dirección actualizada" : "Dirección guardada");
     } else {
         alert("Error al guardar");
     }
-}
+};
 
-async function eliminarDireccion(id) {
+window.eliminarDireccion = async function(id) {
     if (!confirm("¿Eliminar esta dirección?")) return;
     
     const data = await callAPI('/api/direcciones/' + id, {
@@ -2095,12 +2431,14 @@ async function eliminarDireccion(id) {
     } else {
         alert("Error al eliminar");
     }
-}
+};
 
 // ================================
 // UTILIDADES
 // ================================
 function mostrarToast(mensaje) {
+    mensaje = window._sanitizeHTML(mensaje).substring(0, 200);
+    
     var toast = document.createElement("div");
     toast.className = "toast";
     toast.textContent = mensaje;
@@ -2113,12 +2451,16 @@ function mostrarToast(mensaje) {
     setTimeout(function() {
         toast.classList.remove("show");
         setTimeout(function() {
-            document.body.removeChild(toast);
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
         }, 300);
     }, 3000);
 }
 
-// Click outside close
+// ================================
+// CLICK OUTSIDE CLOSE
+// ================================
 document.addEventListener("click", function(e) {
     var userMenu = document.getElementById("userMenu");
     var userBtn = document.querySelector(".user-btn");
