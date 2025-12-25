@@ -2469,3 +2469,4 @@ document.addEventListener("click", function(e) {
         userMenu.classList.remove("show");
     }
 });
+})();
