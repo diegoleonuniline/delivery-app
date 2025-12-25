@@ -549,7 +549,7 @@ function checkBannersExtra() {
         if (sec.style.display === "none" && ter.style.display === "none") {
             container.style.display = "none";
         } else {
-            container.style.display = "grid";
+            container.style.display = "flex";
         }
     }
 }
