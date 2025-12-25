@@ -1808,6 +1808,10 @@ function cerrarEditarPerfil() {
     document.body.style.overflow = "";
 }
 
+// ================================
+// EDITAR PERFIL - ARCHIVO SEPARADO
+// ================================
+
 async function handleEditarPerfil(e) {
     e.preventDefault();
     
@@ -1823,7 +1827,6 @@ async function handleEditarPerfil(e) {
     
     document.getElementById("alertEditarPerfil").style.display = "none";
     
-    // Validar contraseñas solo si se ingresó algo
     if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
         if (contrasena.trim() !== contrasena2.trim()) {
             console.log("ERROR: Contraseñas no coinciden");
@@ -1847,7 +1850,6 @@ async function handleEditarPerfil(e) {
     btn.classList.add("loading");
     btn.disabled = true;
     
-    // Preparar datos
     var datosActualizar = {
         nombre: nombre,
         telefono: telefono
@@ -1857,8 +1859,7 @@ async function handleEditarPerfil(e) {
         datosActualizar.contrasena = contrasena.trim();
     }
     
-    console.log("Datos a enviar al servidor:", datosActualizar);
-    console.log("URL:", API_URL + '/api/auth/perfil/' + sessionData.id);
+    console.log("Datos a enviar:", datosActualizar);
     
     try {
         const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
@@ -1873,10 +1874,8 @@ async function handleEditarPerfil(e) {
         
         if (data.success && data.cliente) {
             console.log("✅ Actualización exitosa");
-            console.log("Datos del cliente recibidos:", data.cliente);
             
-            // Guardar en sessionData
-            var nuevosDatos = {
+            sessionData = {
                 id: data.cliente.id,
                 nombre: data.cliente.nombre,
                 telefono: data.cliente.telefono,
@@ -1885,52 +1884,31 @@ async function handleEditarPerfil(e) {
                 puntos: data.cliente.puntos || 0
             };
             
-            console.log("Nuevos datos preparados:", nuevosDatos);
-            
-            sessionData = nuevosDatos;
-            
             console.log("sessionData DESPUÉS:", sessionData);
             
-            // Guardar en localStorage
             localStorage.setItem("uniline_cliente", JSON.stringify(sessionData));
-            console.log("Guardado en localStorage:", localStorage.getItem("uniline_cliente"));
             
-            // Actualizar UI
-            console.log("Actualizando UI...");
             actualizarUIUsuario();
-            
-            // Actualizar modal de cuenta
-            var nombreElemento = document.getElementById("cuentaNombre");
-            var correoElemento = document.getElementById("cuentaCorreo");
-            if (nombreElemento) {
-                nombreElemento.textContent = sessionData.nombre;
-                console.log("Actualizado cuentaNombre:", nombreElemento.textContent);
-            }
-            if (correoElemento) {
-                correoElemento.textContent = sessionData.correo;
-                console.log("Actualizado cuentaCorreo:", correoElemento.textContent);
-            }
             
             cerrarEditarPerfil();
             mostrarToast("✅ Perfil actualizado correctamente");
             
-            console.log("=== FIN handleEditarPerfil (ÉXITO) ===");
+            console.log("=== FIN (ÉXITO) ===");
         } else {
-            console.log("❌ Error en respuesta:", data.mensaje);
+            console.log("❌ Error:", data.mensaje);
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = data.mensaje || "Error al actualizar";
             alert.style.display = "block";
         }
     } catch (error) {
-        console.error("❌ ERROR en try/catch:", error);
+        console.error("❌ ERROR:", error);
         btn.classList.remove("loading");
         btn.disabled = false;
     }
     
     return false;
 }
-
 
 async function verDirecciones() {
     if (!sessionData) return;
