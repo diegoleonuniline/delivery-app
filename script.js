@@ -120,6 +120,8 @@ function mostrarApp() {
 }
 
 function actualizarUIUsuario() {
+    console.log(">>> actualizarUIUsuario llamada, sessionData:", sessionData);
+    
     if (sessionData) {
         document.getElementById("userInitial").textContent = sessionData.nombre.charAt(0).toUpperCase();
         document.getElementById("userPoints").textContent = "⭐ " + (sessionData.puntos || 0);
@@ -127,21 +129,11 @@ function actualizarUIUsuario() {
         document.getElementById("menuUserEmail").textContent = sessionData.correo;
         document.getElementById("footerCuentaLabel").textContent = "Cuenta";
         
-        // Ocultar botón login desktop
-        var btnLogin = document.getElementById("btnLoginDesktop");
-        if (btnLogin) btnLogin.style.display = "none";
-    } else {
-        document.getElementById("userInitial").textContent = "?";
-        document.getElementById("userPoints").textContent = "";
-        document.getElementById("menuUserName").textContent = "Invitado";
-        document.getElementById("menuUserEmail").textContent = "No has iniciado sesión";
-        document.getElementById("footerCuentaLabel").textContent = "Entrar";
-        
-        // Mostrar botón login desktop
-        var btnLogin = document.getElementById("btnLoginDesktop");
-        if (btnLogin) btnLogin.style.display = "block";
-    }
-}
+        console.log(">>> UI actualizada con:", {
+            inicial: sessionData.nombre.charAt(0).toUpperCase(),
+            nombre: sessionData.nombre,
+            correo: sessionData.correo
+        });
 
 // ================================
 // CARGAR MENÚ
@@ -1803,16 +1795,22 @@ function cerrarEditarPerfil() {
 async function handleEditarPerfil(e) {
     e.preventDefault();
     
+    console.log("=== INICIO handleEditarPerfil ===");
+    
     var nombre = document.getElementById("editNombre").value.trim();
     var telefono = document.getElementById("editTelefono").value.trim();
     var contrasena = document.getElementById("editContrasena").value;
     var contrasena2 = document.getElementById("editContrasena2").value;
     
+    console.log("Datos del formulario:", { nombre, telefono, contrasena: contrasena ? "***" : "(vacío)" });
+    console.log("sessionData ANTES:", sessionData);
+    
     document.getElementById("alertEditarPerfil").style.display = "none";
     
-// Validar contraseñas solo si se ingresó algo
-if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
-    if (contrasena.trim() !== contrasena2.trim()) {
+    // Validar contraseñas solo si se ingresó algo
+    if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
+        if (contrasena.trim() !== contrasena2.trim()) {
+            console.log("ERROR: Contraseñas no coinciden");
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = "Las contraseñas no coinciden";
@@ -1820,6 +1818,7 @@ if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
             return false;
         }
         if (contrasena.length < 4) {
+            console.log("ERROR: Contraseña muy corta");
             var alert = document.getElementById("alertEditarPerfil");
             alert.className = "alert alert-error";
             alert.textContent = "La contraseña debe tener al menos 4 caracteres";
@@ -1832,41 +1831,91 @@ if (contrasena.trim() !== "" || contrasena2.trim() !== "") {
     btn.classList.add("loading");
     btn.disabled = true;
     
-   // Preparar datos - solo incluir contraseña si se ingresó
-var datosActualizar = {
-    nombre: nombre,
-    telefono: telefono
-};
-
-// Solo agregar contraseña si se escribió algo
-if (contrasena && contrasena.trim() !== "") {
-    datosActualizar.contrasena = contrasena.trim();
-}
-
-const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
-    method: 'PUT',
-    body: JSON.stringify(datosActualizar)
-});
+    // Preparar datos
+    var datosActualizar = {
+        nombre: nombre,
+        telefono: telefono
+    };
     
-    btn.classList.remove("loading");
-    btn.disabled = false;
+    if (contrasena && contrasena.trim() !== "") {
+        datosActualizar.contrasena = contrasena.trim();
+    }
     
-    if (data.success && data.cliente) {
-        sessionData = data.cliente;
-        localStorage.setItem("uniline_cliente", JSON.stringify(data.cliente));
+    console.log("Datos a enviar al servidor:", datosActualizar);
+    console.log("URL:", API_URL + '/api/auth/perfil/' + sessionData.id);
+    
+    try {
+        const data = await callAPI('/api/auth/perfil/' + sessionData.id, {
+            method: 'PUT',
+            body: JSON.stringify(datosActualizar)
+        });
         
-        actualizarUIUsuario();
-        cerrarEditarPerfil();
-        mostrarToast("✅ Perfil actualizado correctamente");
-    } else {
-        var alert = document.getElementById("alertEditarPerfil");
-        alert.className = "alert alert-error";
-        alert.textContent = data.mensaje || "Error al actualizar";
-        alert.style.display = "block";
+        console.log("Respuesta del servidor:", data);
+        
+        btn.classList.remove("loading");
+        btn.disabled = false;
+        
+        if (data.success && data.cliente) {
+            console.log("✅ Actualización exitosa");
+            console.log("Datos del cliente recibidos:", data.cliente);
+            
+            // Guardar en sessionData
+            var nuevosDatos = {
+                id: data.cliente.id,
+                nombre: data.cliente.nombre,
+                telefono: data.cliente.telefono,
+                correo: data.cliente.correo,
+                direccion: data.cliente.direccion || "",
+                puntos: data.cliente.puntos || 0
+            };
+            
+            console.log("Nuevos datos preparados:", nuevosDatos);
+            
+            sessionData = nuevosDatos;
+            
+            console.log("sessionData DESPUÉS:", sessionData);
+            
+            // Guardar en localStorage
+            localStorage.setItem("uniline_cliente", JSON.stringify(sessionData));
+            console.log("Guardado en localStorage:", localStorage.getItem("uniline_cliente"));
+            
+            // Actualizar UI
+            console.log("Actualizando UI...");
+            actualizarUIUsuario();
+            
+            // Actualizar modal de cuenta
+            var nombreElemento = document.getElementById("cuentaNombre");
+            var correoElemento = document.getElementById("cuentaCorreo");
+            if (nombreElemento) {
+                nombreElemento.textContent = sessionData.nombre;
+                console.log("Actualizado cuentaNombre:", nombreElemento.textContent);
+            }
+            if (correoElemento) {
+                correoElemento.textContent = sessionData.correo;
+                console.log("Actualizado cuentaCorreo:", correoElemento.textContent);
+            }
+            
+            cerrarEditarPerfil();
+            mostrarToast("✅ Perfil actualizado correctamente");
+            
+            console.log("=== FIN handleEditarPerfil (ÉXITO) ===");
+        } else {
+            console.log("❌ Error en respuesta:", data.mensaje);
+            var alert = document.getElementById("alertEditarPerfil");
+            alert.className = "alert alert-error";
+            alert.textContent = data.mensaje || "Error al actualizar";
+            alert.style.display = "block";
+        }
+    } catch (error) {
+        console.error("❌ ERROR en try/catch:", error);
+        btn.classList.remove("loading");
+        btn.disabled = false;
     }
     
     return false;
 }
+
+
 async function verDirecciones() {
     if (!sessionData) return;
     
