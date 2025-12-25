@@ -1,5 +1,6 @@
 // ================================
-// CAPA DE SEGURIDAD - CARGAR ANTES DE script.js
+// CAPA DE SEGURIDAD FORTIFICADA
+// Cargar ANTES de script.js
 // ================================
 
 (function() {
@@ -9,15 +10,10 @@
     // 1. PROTECCIÓN ANTI-TAMPERING
     // ================================
     
-    const _freeze = Object.freeze;
-    const _seal = Object.seal;
-    const _defineProperty = Object.defineProperty;
-    
-    // Prevenir modificación de prototipos críticos
-    _freeze(Object.prototype);
-    _freeze(Array.prototype);
-    _freeze(String.prototype);
-    _freeze(Function.prototype);
+    Object.freeze(Object.prototype);
+    Object.freeze(Array.prototype);
+    Object.freeze(String.prototype);
+    Object.freeze(Function.prototype);
     
     // ================================
     // 2. SANITIZACIÓN XSS
@@ -41,25 +37,42 @@
             .replace(/\//g, '&#x2F;');
     };
     
+    // Crear elementos seguros
+    window._createElement = function(tag, props, text) {
+        const el = document.createElement(tag);
+        if (props) {
+            Object.keys(props).forEach(key => {
+                if (key === 'className') el.className = props[key];
+                else if (key === 'onclick') el.onclick = props[key];
+                else el.setAttribute(key, props[key]);
+            });
+        }
+        if (text) el.textContent = text;
+        return el;
+    };
+    
     // ================================
     // 3. PROTECCIÓN LOCALSTORAGE
     // ================================
     
-    const _LS_KEY = 'k3y_s@lt_2025';
+    const _LS_KEY = 'un1l1n3_s3cur3_2025';
     
-    // Cifrado simple XOR (NO usar para datos críticos)
     window._secureStorage = {
         set: function(key, value) {
-            const str = JSON.stringify(value);
-            const encoded = btoa(str.split('').map((c, i) => 
-                String.fromCharCode(c.charCodeAt(0) ^ _LS_KEY.charCodeAt(i % _LS_KEY.length))
-            ).join(''));
-            localStorage.setItem(key, encoded);
+            try {
+                const str = JSON.stringify(value);
+                const encoded = btoa(str.split('').map((c, i) => 
+                    String.fromCharCode(c.charCodeAt(0) ^ _LS_KEY.charCodeAt(i % _LS_KEY.length))
+                ).join(''));
+                localStorage.setItem(key, encoded);
+            } catch (e) {
+                console.error('Error storing data');
+            }
         },
         get: function(key) {
-            const encoded = localStorage.getItem(key);
-            if (!encoded) return null;
             try {
+                const encoded = localStorage.getItem(key);
+                if (!encoded) return null;
                 const decoded = atob(encoded).split('').map((c, i) =>
                     String.fromCharCode(c.charCodeAt(0) ^ _LS_KEY.charCodeAt(i % _LS_KEY.length))
                 ).join('');
@@ -70,6 +83,9 @@
         },
         remove: function(key) {
             localStorage.removeItem(key);
+        },
+        clear: function() {
+            localStorage.clear();
         }
     };
     
@@ -79,19 +95,26 @@
     
     window._validateInput = {
         email: function(email) {
+            if (!email || typeof email !== 'string') return false;
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email) && email.length < 255;
+            return re.test(email) && email.length < 255 && email.length > 5;
         },
         phone: function(phone) {
-            const re = /^\d{10}$/;
-            return re.test(phone.replace(/\D/g, ''));
+            if (!phone) return false;
+            const cleaned = String(phone).replace(/\D/g, '');
+            return cleaned.length === 10;
         },
         text: function(text, maxLen = 500) {
+            if (!text) return true; // Vacío es válido
             return typeof text === 'string' && text.length <= maxLen;
         },
         number: function(num, min = 0, max = 999999) {
             const n = Number(num);
-            return !isNaN(n) && n >= min && n <= max;
+            return !isNaN(n) && n >= min && n <= max && isFinite(n);
+        },
+        alphanumeric: function(str) {
+            if (!str) return false;
+            return /^[a-zA-Z0-9\s]+$/.test(str);
         }
     };
     
@@ -119,51 +142,32 @@
     };
     
     // ================================
-    // 6. DETECCIÓN DEVTOOLS (Opcional)
-    // ================================
-    
-    let _devToolsOpen = false;
-    
-    (function detectDevTools() {
-        const threshold = 160;
-        const check = function() {
-            if (window.outerWidth - window.innerWidth > threshold || 
-                window.outerHeight - window.innerHeight > threshold) {
-                if (!_devToolsOpen) {
-                    _devToolsOpen = true;
-                    console.warn('🔒 Modo desarrollo detectado');
-                }
-            } else {
-                _devToolsOpen = false;
-            }
-        };
-        setInterval(check, 1000);
-    })();
-    
-    // ================================
-    // 7. PROTECCIÓN CONSOLE
-    // ================================
-    
-    if (typeof window !== 'undefined') {
-        const _console = window.console;
-        const methods = ['log', 'warn', 'error', 'info', 'debug'];
-        
-        // En producción, deshabilitar console (opcional)
-        if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-            methods.forEach(method => {
-                window.console[method] = function() {};
-            });
-        }
-    }
-    
-    // ================================
-    // 8. PROTECCIÓN CONTRA CLICKJACKING
+    // 6. PROTECCIÓN CONTRA CLICKJACKING
     // ================================
     
     if (window.top !== window.self) {
         window.top.location = window.self.location;
     }
     
-    console.log('🛡️ Capa de seguridad activada');
+    // ================================
+    // 7. DESHABILITAR CONSOLE EN PRODUCCIÓN
+    // ================================
+    
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        const noop = function() {};
+        ['log', 'warn', 'error', 'info', 'debug', 'trace'].forEach(method => {
+            window.console[method] = noop;
+        });
+    }
+    
+    // ================================
+    // 8. PROTECCIÓN CONTRA MODIFICACIÓN
+    // ================================
+    
+    Object.defineProperty(window, '_securityLayer', {
+        value: true,
+        writable: false,
+        configurable: false
+    });
     
 })();
